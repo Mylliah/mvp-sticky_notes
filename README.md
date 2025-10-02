@@ -4,7 +4,6 @@ MVP Sticky-notes Project - Coming soon...
 
 ---------
 
-J1 :
 # MVP Sticky Notes — J1
 
 ## Démarrer en dev
