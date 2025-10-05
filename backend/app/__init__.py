@@ -13,8 +13,7 @@ migrate = Migrate()
 def create_app():
     """
     Factory function pour créer et configurer l'app Flask.
-    Returns:
-        Flask: Instance configurée de l'app Flask avec les routes de base.
+    Returns: Flask: Instance configurée de l'app Flask avec les routes de base.
     """
     app = Flask(__name__)
 
@@ -33,7 +32,14 @@ def create_app():
     def health():
         return {"status": "ok"}
 
-    # import des modèles ici "from . import models (models.py)"
+    # import provisoire des modèles ici "from . import models (models.py)"
     from . import models
+    from flask import jsonify
+    from .models import Note
+
+    @app.get("/notes")
+    def list_notes():
+        notes = Note.query.order_by(Note.id.asc()).all()
+        return jsonify([n.to_dict() for n in notes])
 
     return app
