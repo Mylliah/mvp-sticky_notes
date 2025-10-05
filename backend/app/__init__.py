@@ -8,8 +8,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask import request, abort
 
-from backend.app.models import ActionLog, Assignment, Contact
-
 db = SQLAlchemy()
 migrate = Migrate()
 
@@ -30,6 +28,8 @@ def create_app():
     # branche SQLAlchemy + Alembic/Flask-Migrate
     db.init_app(app)
     migrate.init_app(app, db)
+
+    from .models import ActionLog, Assignment, Contact, Note, User
 
     @app.get("/health") # vérifie que l'API répond
     def health():
@@ -228,15 +228,15 @@ def create_app():
     # import provisoire des modèles ici "from . import models (models.py)"
     from . import models
     from flask import jsonify
-    from .models import Note
-    from .models import User
-    from .models import Assignment
-    from .models import Contact
-    from .models import ActionLog
-
+    
     @app.get("/notes")
     def list_notes():
-        notes = Note.query.order_by(Note.id.asc()).all()
+        notes = models.Note.query.order_by(models.Note.id.asc()).all()
         return jsonify([n.to_dict() for n in notes])
+    
+    @app.get("/users")
+    def list_users():
+        users = models.User.query.order_by(models.User.id.asc()).all()
+        return jsonify([u.to_dict() for u in users])
 
     return app

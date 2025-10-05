@@ -116,7 +116,10 @@ class Contact(db.Model):
 
     # Permet d’accéder à l’utilisateur propriétaire du carnet de contacts (contact.user)
     # et côté utilisateur, récupérer tous ses contacts (user.contacts)
-    user = db.relationship('User', backref=db.backref('contacts', lazy=True))
+    # user = propriétaire du carnet de contacts
+    # contact_user = concerne le contact ajouté
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('contacts', lazy=True))
+    contact_user = db.relationship('User', foreign_keys=[contact_user_id])
 
     def __repr__(self):
         """Représentation textuelle de l'objet Contact pour le débogage.
