@@ -9,7 +9,7 @@ class Note(db.Model):
     __tablename__ = "notes"
 
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
@@ -19,18 +19,18 @@ class Note(db.Model):
 
     def __repr__(self):
         """Représentation textuelle de l'objet Note pour le débogage.
-        Returns: str: Chaîne représentant l'instance Note avec son ID et titre.
+        Returns: str: Chaîne représentant l'instance Note avec son ID et contenu.
         """
-        return f"<Note id={self.id} title={self.title!r}>"
+        return f"<Note id={self.id} content={self.content[:30]!r}>"
 
     def to_dict(self):
         """
         Convertit l'instance Note en dictionnaire pour la sérialisation JSON.
-        Returns: dict: Dictionnaire contenant les données de la note (id, title, created_at).
+        Returns: dict: Dictionnaire contenant les données de la note (id, content, created_at).
         """
         return {
             "id": self.id,
-            "title": self.title,
+            "content": self.content,
             "create_date": self.created_date.isoformat() if self.created_date else None,
         }
 
