@@ -2,8 +2,8 @@
 Routes pour la gestion des assignations.
 """
 from flask import Blueprint, request, abort
-from .. import db
-from ..models import Assignment, Note, User
+from ... import db
+from ...models import Assignment, Note, User
 
 bp = Blueprint('assignments', __name__, url_prefix='/assignments')
 

@@ -3,8 +3,8 @@ Routes pour la gestion des utilisateurs.
 """
 from flask import Blueprint, request, abort, jsonify
 from werkzeug.security import generate_password_hash
-from .. import db
-from ..models import User
+from ... import db
+from ...models import User
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 

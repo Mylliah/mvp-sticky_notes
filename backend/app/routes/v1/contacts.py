@@ -2,8 +2,8 @@
 Routes pour la gestion des contacts.
 """
 from flask import Blueprint, request, abort
-from .. import db
-from ..models import Contact
+from ... import db
+from ...models import Contact
 
 bp = Blueprint('contacts', __name__, url_prefix='/contacts')
 

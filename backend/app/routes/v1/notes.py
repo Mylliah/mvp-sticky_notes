@@ -2,8 +2,8 @@
 Routes pour la gestion des notes.
 """
 from flask import Blueprint, request, abort
-from .. import db
-from ..models import Note
+from ... import db
+from ...models import Note
 
 bp = Blueprint('notes', __name__, url_prefix='/notes')
 

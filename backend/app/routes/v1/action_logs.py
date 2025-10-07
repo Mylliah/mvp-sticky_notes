@@ -3,8 +3,8 @@ Routes pour la gestion des logs d'actions.
 """
 from flask import Blueprint, request, abort
 from datetime import datetime
-from .. import db
-from ..models import ActionLog, User
+from ... import db
+from ...models import ActionLog, User
 
 bp = Blueprint('action_logs', __name__, url_prefix='/action_logs')
 
