@@ -45,13 +45,8 @@ def create_app():
     def health():
         return {"status": "ok"}
 
-    # Enregistrer les blueprints (routes)
-    from .routes import notes, users, assignments, contacts, action_logs
-    
-    app.register_blueprint(notes.bp)
-    app.register_blueprint(users.bp)
-    app.register_blueprint(assignments.bp)
-    app.register_blueprint(contacts.bp)
-    app.register_blueprint(action_logs.bp)
+    # Enregistrer les blueprints de l'API v1
+    from .routes.v1 import register_v1_blueprints
+    register_v1_blueprints(app)
 
     return app
