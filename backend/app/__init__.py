@@ -64,18 +64,8 @@ def create_app():
     
     @app.get("/notes")
     def list_notes():
-        # Test avec SQL direct pour contourner l'ORM
-        from sqlalchemy import text
-        result = db.session.execute(text("SELECT id, content, creator_id, created_date FROM notes ORDER BY id ASC"))
-        notes = []
-        for row in result:
-            notes.append({
-                'id': row.id,
-                'content': row.content,
-                'creator_id': row.creator_id,
-                'created_date': row.created_date.isoformat() if row.created_date else None
-            })
-        return notes
+        notes = Note.query.order_by(Note.id.asc()).all()
+        return [note.to_dict() for note in notes]
 
     @app.put("/notes/<int:note_id>")
     def update_note(note_id):
