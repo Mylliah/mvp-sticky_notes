@@ -4,7 +4,10 @@ from . import db  # 'db' vient de app/__init__.py
 
 class Note(db.Model):
     """
-    But : représenter une note (titre et date de création) stockée dans la table "notes".
+    But : représ    target_id = db.Column(db.Integer, nullable=False)  # id d'entité concernée
+    action_type = db.Column(db.String(80), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    payload = db.Column(db.String(255))  # détails supplémentaires sur l'action/JSONr une note (titre et date de création) stockée dans la table "notes".
     """
     __tablename__ = "notes"
 
@@ -175,6 +178,6 @@ class ActionLog(db.Model):
             "target_id": self.target_id,
             "action_type": self.action_type,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
-            "playload": self.playload,
+            "payload": self.payload,
         }
     

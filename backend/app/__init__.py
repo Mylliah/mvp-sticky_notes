@@ -7,6 +7,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask import request, abort
+from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -18,12 +19,21 @@ def create_app():
     """
     app = Flask(__name__)
 
+    # Configuration de la clé secrète Flask
+    app.config["SECRET_KEY"] = os.getenv(
+        "FLASK_SECRET_KEY", 
+        "dev-secret-key-change-in-production"
+    )
+
     # config DB : lit DATABASE_URL (sinon valeur par défaut vers le service 'db')
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
         "postgresql+psycopg2://app:app@db:5432/appdb",
     )
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = os.getenv(
+        "SQLALCHEMY_TRACK_MODIFICATIONS", 
+        "False"
+    ).lower() == "true"
 
     # branche SQLAlchemy + Alembic/Flask-Migrate
     db.init_app(app)
@@ -51,6 +61,21 @@ def create_app():
     def get_note(note_id):
         note = Note.query.get_or_404(note_id)
         return note.to_dict()
+    
+    @app.get("/notes")
+    def list_notes():
+        # Test avec SQL direct pour contourner l'ORM
+        from sqlalchemy import text
+        result = db.session.execute(text("SELECT id, content, creator_id, created_date FROM notes ORDER BY id ASC"))
+        notes = []
+        for row in result:
+            notes.append({
+                'id': row.id,
+                'content': row.content,
+                'creator_id': row.creator_id,
+                'created_date': row.created_date.isoformat() if row.created_date else None
+            })
+        return notes
 
     @app.put("/notes/<int:note_id>")
     def update_note(note_id):
@@ -74,16 +99,39 @@ def create_app():
     @app.post("/users")
     def create_user():
         data = request.get_json()
-        if not data or not data.get("username") or not data.get("email") or not data.get("password_hash"):
+        if not data:
             abort(400, description="Missing data")
+        
+        # Vérifier les champs requis
+        required_fields = ['username', 'email', 'password_hash']
+        for field in required_fields:
+            if not data.get(field):
+                abort(400, description=f"Missing {field}")
+        
+        # Vérifier l'unicité de l'username et de l'email
+        existing_user = User.query.filter(
+            (User.username == data['username']) | (User.email == data['email'])
+        ).first()
+        if existing_user:
+            if existing_user.username == data['username']:
+                abort(400, description="Username already exists")
+            if existing_user.email == data['email']:
+                abort(400, description="Email already exists")
+        
+        # Créer le nouvel utilisateur
         user = User(
-            username=data["username"],
-            email=data["email"],
-            password_hash=data["password_hash"]
+            username=data['username'],
+            email=data['email'],
+            password_hash=data['password_hash']
         )
         db.session.add(user)
         db.session.commit()
         return user.to_dict(), 201
+
+    @app.get("/users")
+    def list_users():
+        users = models.User.query.order_by(models.User.id.asc()).all()
+        return jsonify([u.to_dict() for u in users])
 
     @app.get("/users/<int:user_id>")
     def get_user(user_id):
@@ -94,12 +142,30 @@ def create_app():
     def update_user(user_id):
         user = User.query.get_or_404(user_id)
         data = request.get_json()
+        
         if "username" in data:
+            if not data["username"] or data["username"].strip() == "":
+                abort(400, description="Username cannot be empty")
+            # Vérifier l'unicité du username
+            existing = User.query.filter(User.username == data["username"], User.id != user_id).first()
+            if existing:
+                abort(400, description="Username already exists")
             user.username = data["username"]
+            
         if "email" in data:
+            if not data["email"] or data["email"].strip() == "":
+                abort(400, description="Email cannot be empty")
+            # Vérifier l'unicité de l'email
+            existing = User.query.filter(User.email == data["email"], User.id != user_id).first()
+            if existing:
+                abort(400, description="Email already exists")
             user.email = data["email"]
-        if "password_hash" in data:
-            user.password_hash = data["password_hash"]
+            
+        if "password" in data:
+            if not data["password"] or data["password"].strip() == "":
+                abort(400, description="Password cannot be empty")
+            user.password_hash = generate_password_hash(data["password"])
+            
         db.session.commit()
         return user.to_dict()
 
@@ -116,7 +182,24 @@ def create_app():
     def create_assignment():
         data = request.get_json()
         if not data or not data.get("note_id") or not data.get("user_id"):
-            abort(400, description="Missing data")
+            abort(400, description="Missing note_id or user_id")
+            
+        # Vérifier que la note et l'utilisateur existent
+        note = Note.query.get(data["note_id"])
+        if not note:
+            abort(400, description="Note not found")
+        user = User.query.get(data["user_id"])
+        if not user:
+            abort(400, description="User not found")
+            
+        # Vérifier qu'il n'y a pas déjà une assignation
+        existing = Assignment.query.filter_by(
+            note_id=data["note_id"], 
+            user_id=data["user_id"]
+        ).first()
+        if existing:
+            abort(400, description="Assignment already exists")
+            
         assignment = Assignment(
             note_id=data["note_id"],
             user_id=data["user_id"],
@@ -125,6 +208,11 @@ def create_app():
         db.session.add(assignment)
         db.session.commit()
         return assignment.to_dict(), 201
+
+    @app.get("/assignments")
+    def list_assignments():
+        assignments = Assignment.query.order_by(Assignment.id.asc()).all()
+        return [a.to_dict() for a in assignments]
 
     @app.get("/assignments/<int:assignment_id>")
     def get_assignment(assignment_id):
@@ -135,8 +223,24 @@ def create_app():
     def update_assignment(assignment_id):
         assignment = Assignment.query.get_or_404(assignment_id)
         data = request.get_json()
+        
+        if "user_id" in data:
+            # Vérifier que le nouvel utilisateur existe
+            user = User.query.get(data["user_id"])
+            if not user:
+                abort(400, description="User not found")
+            # Vérifier qu'il n'y a pas déjà une assignation avec ce user
+            existing = Assignment.query.filter_by(
+                note_id=assignment.note_id, 
+                user_id=data["user_id"]
+            ).filter(Assignment.id != assignment_id).first()
+            if existing:
+                abort(400, description="Assignment already exists for this user")
+            assignment.user_id = data["user_id"]
+            
         if "is_read" in data:
             assignment.is_read = data["is_read"]
+            
         db.session.commit()
         return assignment.to_dict()
 
@@ -163,6 +267,11 @@ def create_app():
         db.session.add(contact)
         db.session.commit()
         return contact.to_dict(), 201
+
+    @app.get("/contacts")
+    def list_contacts():
+        contacts = Contact.query.order_by(Contact.id.asc()).all()
+        return [c.to_dict() for c in contacts]
 
     @app.get("/contacts/<int:contact_id>")
     def get_contact(contact_id):
@@ -204,6 +313,11 @@ def create_app():
         db.session.commit()
         return log.to_dict(), 201
 
+    @app.get("/action_logs")
+    def list_action_logs():
+        logs = ActionLog.query.order_by(ActionLog.timestamp.desc()).all()
+        return [log.to_dict() for log in logs]
+
     @app.get("/action_logs/<int:log_id>")
     def get_action_log(log_id):
         log = ActionLog.query.get_or_404(log_id)
@@ -228,15 +342,8 @@ def create_app():
     # import provisoire des modèles ici "from . import models (models.py)"
     from . import models
     from flask import jsonify
+
     
-    @app.get("/notes")
-    def list_notes():
-        notes = models.Note.query.order_by(models.Note.id.asc()).all()
-        return jsonify([n.to_dict() for n in notes])
-    
-    @app.get("/users")
-    def list_users():
-        users = models.User.query.order_by(models.User.id.asc()).all()
-        return jsonify([u.to_dict() for u in users])
+
 
     return app
