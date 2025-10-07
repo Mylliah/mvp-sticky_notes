@@ -4,10 +4,7 @@ from . import db  # 'db' vient de app/__init__.py
 
 class Note(db.Model):
     """
-    But : représ    target_id = db.Column(db.Integer, nullable=False)  # id d'entité concernée
-    action_type = db.Column(db.String(80), nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    payload = db.Column(db.String(255))  # détails supplémentaires sur l'action/JSONr une note (titre et date de création) stockée dans la table "notes".
+    But : représenter une note (titre et date de création) stockée dans la table "notes".
     """
     __tablename__ = "notes"
 

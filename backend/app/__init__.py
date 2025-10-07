@@ -328,12 +328,5 @@ def create_app():
         db.session.delete(log)
         db.session.commit()
         return {"deleted": True}
-    
-    # import provisoire des modèles ici "from . import models (models.py)"
-    from . import models
-    from flask import jsonify
-
-    
-
 
     return app
