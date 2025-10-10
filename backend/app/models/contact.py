@@ -17,8 +17,8 @@ class Contact(db.Model):
     contact_action = db.Column(db.String(80))
     created_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    # Relations pour accède rapide à l'objet User (propriétaire et contact)
-    owner = db.relationship('User', foreign_keys=[user_id])
+    # Relations pour accès rapide à l'objet User (propriétaire et contact)
+    user = db.relationship('User', foreign_keys=[user_id], back_populates='contacts')
     contact_user = db.relationship('User', foreign_keys=[contact_user_id])
 
     def __repr__(self):

@@ -7,10 +7,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from ... import db
 from ...models import User
 
-bp = Blueprint('auth', __name__, url_prefix='/auth')
+bp = Blueprint('auth', __name__)
 
 
-@bp.post('/register')
+@bp.post('/auth/register')
 def register():
     """
     Endpoint pour créer un nouvel utilisateur.
@@ -39,7 +39,7 @@ def register():
     return {"msg": "User created successfully", "username": user.username}, 201
 
 
-@bp.post('/login')
+@bp.post('/auth/login')
 def login():
     """
     Endpoint pour authentifier l'utilisateur et générer un JWT.
@@ -56,6 +56,6 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         abort(401, description="Invalid credentials")
 
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
 
     return {"access_token": access_token, "username": user.username}

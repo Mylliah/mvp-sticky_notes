@@ -2,13 +2,14 @@
 Routes pour la gestion des logs d'actions.
 """
 from flask import Blueprint, request, abort
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from ... import db
 from ...models import ActionLog, User
 
-bp = Blueprint('action_logs', __name__, url_prefix='/action_logs')
+bp = Blueprint('action_logs', __name__)
 
-@bp.post('')
+@bp.post('/action_logs')
 def create_action_log():
     """Créer un nouveau log d'action."""
     data = request.get_json()
@@ -32,7 +33,7 @@ def create_action_log():
     db.session.commit()
     return action_log.to_dict(), 201
 
-@bp.get('')
+@bp.get('/action_logs')
 def list_action_logs():
     """Lister tous les logs d'actions."""
     # Pagination pour éviter de surcharger
@@ -65,13 +66,13 @@ def list_action_logs():
         "pages": logs.pages
     }
 
-@bp.get('/<int:log_id>')
+@bp.get('/action_logs/<int:log_id>')
 def get_action_log(log_id):
     """Récupérer un log d'action par son ID."""
     action_log = ActionLog.query.get_or_404(log_id)
     return action_log.to_dict()
 
-@bp.delete('/<int:log_id>')
+@bp.delete('/action_logs/<int:log_id>')
 def delete_action_log(log_id):
     """Supprimer un log d'action."""
     action_log = ActionLog.query.get_or_404(log_id)
@@ -79,8 +80,8 @@ def delete_action_log(log_id):
     db.session.commit()
     return {"deleted": True}
 
-@bp.get('/stats')
-def get_action_stats():
+@bp.get('/action_logs/stats')
+def get_action_log_stats():
     """Récupérer des statistiques sur les actions."""
     from sqlalchemy import func
     

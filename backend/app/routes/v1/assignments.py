@@ -2,12 +2,13 @@
 Routes pour la gestion des assignations.
 """
 from flask import Blueprint, request, abort
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
 from ...models import Assignment, Note, User
 
-bp = Blueprint('assignments', __name__, url_prefix='/assignments')
+bp = Blueprint('assignments', __name__)
 
-@bp.post('')
+@bp.post('/assignments')
 def create_assignment():
     """Créer une nouvelle assignation."""
     data = request.get_json()
@@ -39,19 +40,19 @@ def create_assignment():
     db.session.commit()
     return assignment.to_dict(), 201
 
-@bp.get('')
+@bp.get('/assignments')
 def list_assignments():
     """Lister toutes les assignations."""
     assignments = Assignment.query.order_by(Assignment.id.asc()).all()
     return [a.to_dict() for a in assignments]
 
-@bp.get('/<int:assignment_id>')
+@bp.get('/assignments/<int:assignment_id>')
 def get_assignment(assignment_id):
     """Récupérer une assignation par son ID."""
     assignment = Assignment.query.get_or_404(assignment_id)
     return assignment.to_dict()
 
-@bp.put('/<int:assignment_id>')
+@bp.put('/assignments/<int:assignment_id>')
 def update_assignment(assignment_id):
     """Mettre à jour une assignation."""
     assignment = Assignment.query.get_or_404(assignment_id)
@@ -77,7 +78,7 @@ def update_assignment(assignment_id):
     db.session.commit()
     return assignment.to_dict()
 
-@bp.delete('/<int:assignment_id>')
+@bp.delete('/assignments/<int:assignment_id>')
 def delete_assignment(assignment_id):
     """Supprimer une assignation."""
     assignment = Assignment.query.get_or_404(assignment_id)

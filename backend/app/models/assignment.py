@@ -19,7 +19,7 @@ class Assignment(db.Model):
 
     # Relations 
     user = db.relationship('User', backref=db.backref('assignments', lazy=True)) 
-    note = db.relationship('Note', backref=db.backref('assignments', lazy=True))
+    note = db.relationship('Note', back_populates='assignments')
 
     def __repr__(self):
         return f"<Assignment id={self.id} user_id={self.user_id} note_id={self.note_id}>"

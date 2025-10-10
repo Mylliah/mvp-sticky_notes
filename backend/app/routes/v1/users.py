@@ -2,58 +2,28 @@
 Routes pour la gestion des utilisateurs.
 """
 from flask import Blueprint, request, abort, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
 from ... import db
 from ...models import User
 
-bp = Blueprint('users', __name__, url_prefix='/users')
+bp = Blueprint('users', __name__)
 
-@bp.post('')
-def create_user():
-    """Créer un nouvel utilisateur."""
-    data = request.get_json()
-    if not data:
-        abort(400, description="Missing data")
-    
-    # Vérifier les champs requis
-    required_fields = ['username', 'email', 'password_hash']
-    for field in required_fields:
-        if not data.get(field):
-            abort(400, description=f"Missing {field}")
-    
-    # Vérifier l'unicité de l'username et de l'email
-    existing_user = User.query.filter(
-        (User.username == data['username']) | (User.email == data['email'])
-    ).first()
-    if existing_user:
-        if existing_user.username == data['username']:
-            abort(400, description="Username already exists")
-        if existing_user.email == data['email']:
-            abort(400, description="Email already exists")
-    
-    # Créer le nouvel utilisateur
-    user = User(
-        username=data['username'],
-        email=data['email'],
-        password_hash=data['password_hash']
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user.to_dict(), 201
+# Route POST /users supprimée car redondante avec /auth/register
 
-@bp.get('')
+@bp.get('/users')
 def list_users():
     """Lister tous les utilisateurs."""
     users = User.query.order_by(User.id.asc()).all()
     return jsonify([u.to_dict() for u in users])
 
-@bp.get('/<int:user_id>')
+@bp.get('/users/<int:user_id>')
 def get_user(user_id):
     """Récupérer un utilisateur par son ID."""
     user = User.query.get_or_404(user_id)
     return user.to_dict()
 
-@bp.put('/<int:user_id>')
+@bp.put('/users/<int:user_id>')
 def update_user(user_id):
     """Mettre à jour un utilisateur."""
     user = User.query.get_or_404(user_id)
@@ -85,7 +55,7 @@ def update_user(user_id):
     db.session.commit()
     return user.to_dict()
 
-@bp.delete('/<int:user_id>')
+@bp.delete('/users/<int:user_id>')
 def delete_user(user_id):
     """Supprimer un utilisateur."""
     user = User.query.get_or_404(user_id)

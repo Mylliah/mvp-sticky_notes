@@ -22,7 +22,7 @@ class Note(db.Model):
 
     # Relations
     creator = db.relationship('User', backref=db.backref('notes', lazy=True))
-    assignments = db.relationship('Assignment', backref='note', lazy=True)
+    assignments = db.relationship('Assignment', back_populates='note', lazy=True)
 
     def __repr__(self):
         """Représentation textuelle pour le débogage."""

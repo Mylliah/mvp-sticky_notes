@@ -10,10 +10,17 @@ def register_v1_blueprints(app):
     """
     from . import notes, users, assignments, contacts, action_logs, auth
     
-    # Enregistrer tous les blueprints avec le préfixe v1
-    app.register_blueprint(notes.bp, url_prefix='/v1')
-    app.register_blueprint(users.bp, url_prefix='/v1')
-    app.register_blueprint(assignments.bp, url_prefix='/v1')
-    app.register_blueprint(contacts.bp, url_prefix='/v1')
-    app.register_blueprint(action_logs.bp, url_prefix='/v1')
-    app.register_blueprint(auth.bp, url_prefix='/v1')
+    # Enregistrer tous les blueprints
+    blueprints_to_register = [
+        notes.bp,
+        users.bp,
+        assignments.bp,
+        contacts.bp,
+        action_logs.bp,
+        auth.bp
+    ]
+    
+    for blueprint in blueprints_to_register:
+        # Vérifier si le blueprint n'est pas déjà enregistré
+        if blueprint.name not in app.blueprints:
+            app.register_blueprint(blueprint, url_prefix='/v1')

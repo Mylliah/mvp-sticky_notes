@@ -14,12 +14,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)  # Augmenté de 128 à 255 car erreur mdp trop long
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    # Relation contacts (carnet du propriétaire)
-    contacts = db.relationship('Contact', backref='owner', lazy=True)
-    # Les autres relations sont configurées dans Assignment et Note
+    # Relations
+    # Les relations sont configurées dans les autres modèles (Assignment, Note, Contact)
+    # Ajout de la relation avec les contacts
+    contacts = db.relationship('Contact', foreign_keys='Contact.user_id', back_populates='user')
 
     def __repr__(self):
         return f"<User id={self.id} username={self.username!r}>"
