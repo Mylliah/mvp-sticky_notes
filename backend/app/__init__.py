@@ -6,9 +6,11 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 
 db = SQLAlchemy()
 migrate = Migrate()
+jwt = JWTManager() # on instancie et on lie à l'app plus bas 
 
 def create_app():
     """
@@ -23,7 +25,13 @@ def create_app():
         "dev-secret-key-change-in-production"
     )
 
-    # config DB : lit DATABASE_URL (sinon valeur par défaut vers le service 'db')
+    # Configuration de la clé secrète spécifique JWT
+    app.config["JWT_SECRET_KEY"] = os.getenv(
+        "JWT_SECRET_KEY",
+        "dev-jwt-secret-key-change-in-production"
+    )
+
+    # configuration DB : lit DATABASE_URL (sinon valeur par défaut vers le service 'db')
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
         "postgresql+psycopg2://app:app@db:5432/appdb",
@@ -33,11 +41,12 @@ def create_app():
         "False"
     ).lower() == "true"
 
-    # Initialiser les extensions
+    # Initialisation des extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    jwt.init_app(app) # intégration JWT dans l'app
 
-    # Importer les modèles pour les migrations
+    # Importation des modèles pour les migrations
     from .models import ActionLog, Assignment, Contact, Note, User
 
     # Route de base pour vérifier que l'API répond
@@ -45,7 +54,7 @@ def create_app():
     def health():
         return {"status": "ok"}
 
-    # Enregistrer les blueprints de l'API v1
+    # Enregistrement des blueprints de l'API v1
     from .routes.v1 import register_v1_blueprints
     register_v1_blueprints(app)
 
