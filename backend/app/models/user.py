@@ -30,7 +30,7 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_date": self.created_at.isoformat() if self.created_at else None,
         }
 
     # gestion mdp
