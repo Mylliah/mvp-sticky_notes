@@ -69,7 +69,7 @@ def update_note(note_id):
         note.status = data["status"]
     if "important" in data:
         note.important = data["important"]
-    note.update_date = datetime.utcnow()
+    note.update_date = datetime.now(datetime.UTC)
     db.session.commit()
     return note.to_dict()
 
@@ -79,6 +79,6 @@ def update_note(note_id):
 def delete_note(note_id):
     """Soft delete : pose la date de suppression, conserve la note pour audit (authentifié)."""
     note = Note.query.get_or_404(note_id)
-    note.delete_date = datetime.utcnow()
+    note.delete_date = datetime.now(datetime.UTC)
     db.session.commit()
     return note.to_dict()

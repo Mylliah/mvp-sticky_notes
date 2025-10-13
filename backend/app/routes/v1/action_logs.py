@@ -27,7 +27,7 @@ def create_action_log():
         entity_type=data.get("entity_type"),
         entity_id=data.get("entity_id"),
         details=data.get("details"),
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(datetime.UTC)
     )
     db.session.add(action_log)
     db.session.commit()
