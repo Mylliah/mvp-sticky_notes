@@ -1,7 +1,7 @@
 """
 Modèle pour les notes.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from .. import db
 
 class Note(db.Model):
@@ -13,7 +13,7 @@ class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_date = db.Column(db.DateTime, nullable=False, default=datetime.now(datetime.UTC))
+    created_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     update_date = db.Column(db.DateTime)
     delete_date = db.Column(db.DateTime)
     read_date = db.Column(db.DateTime)

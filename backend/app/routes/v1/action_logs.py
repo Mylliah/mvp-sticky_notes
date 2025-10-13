@@ -3,7 +3,7 @@ Routes pour la gestion des logs d'actions.
 """
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime
+from datetime import datetime, timezone
 from ... import db
 from ...models import ActionLog, User
 
@@ -27,7 +27,7 @@ def create_action_log():
         entity_type=data.get("entity_type"),
         entity_id=data.get("entity_id"),
         details=data.get("details"),
-        timestamp=datetime.now(datetime.UTC)
+        timestamp=datetime.now(timezone.utc)
     )
     db.session.add(action_log)
     db.session.commit()

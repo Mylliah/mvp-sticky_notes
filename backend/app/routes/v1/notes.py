@@ -1,7 +1,7 @@
 """
 Routes pour la gestion des notes.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
@@ -69,7 +69,7 @@ def update_note(note_id):
         note.status = data["status"]
     if "important" in data:
         note.important = data["important"]
-    note.update_date = datetime.now(datetime.UTC)
+    note.update_date = datetime.now(timezone.utc)
     db.session.commit()
     return note.to_dict()
 
@@ -79,6 +79,6 @@ def update_note(note_id):
 def delete_note(note_id):
     """Soft delete : pose la date de suppression, conserve la note pour audit (authentifié)."""
     note = Note.query.get_or_404(note_id)
-    note.delete_date = datetime.now(datetime.UTC)
+    note.delete_date = datetime.now(timezone.utc)
     db.session.commit()
     return note.to_dict()

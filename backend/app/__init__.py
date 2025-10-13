@@ -47,8 +47,6 @@ def create_app(test_config=None):
     if test_config is not None:
         app.config.update(test_config)
 
-    app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"connect_args": {"check_same_thread": False}})
-
     # Initialisation des extensions
     db.init_app(app)
     migrate.init_app(app, db)

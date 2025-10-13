@@ -1,7 +1,7 @@
 """
 Modèle pour les journaux d'actions.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from .. import db
 
 class ActionLog(db.Model):
@@ -14,7 +14,7 @@ class ActionLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     target_id = db.Column(db.Integer, nullable=False)  # id d'entité concernée
     action_type = db.Column(db.String(80), nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now(datetime.UTC))
+    timestamp = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     payload = db.Column(db.String(255))  # détails supplémentaires sur l'action/JSON
 
     # Donne accès à l'utilisateur qui a généré une action/journal
