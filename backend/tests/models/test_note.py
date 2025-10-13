@@ -3,7 +3,7 @@ Tests unitaires pour le modèle Note.
 Teste toutes les fonctionnalités du modèle Note : création, validation, relations, méthodes, etc.
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from app import db
 from app.models import User, Note, Assignment, Contact
 
@@ -67,7 +67,7 @@ class TestNoteModel:
         """Test la création avec tous les champs optionnels."""
         with app.app_context():
             user = self._create_sample_user('fulluser', 'full@test.com')
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)  # Supprimer timezone pour comparaison
             
             note = Note(
                 content='Note complète avec tous les champs',
@@ -103,18 +103,16 @@ class TestNoteModel:
 
     @pytest.mark.unit
     def test_note_creator_id_required(self, app):
-        """Test que creator_id peut être null pour l'instant (design actuel)."""
+        """Test que creator_id est maintenant obligatoire."""
         with app.app_context():
-            note = Note(
-                content='Note sans créateur',
-                creator_id=None  # Actuellement autorisé par le modèle
-            )
-            db.session.add(note)
-            db.session.commit()
-            
-            # Le modèle actuel autorise creator_id=None
-            assert note.creator_id is None
-            assert note.content == 'Note sans créateur'
+            # Tenter de créer une note sans creator_id doit lever une erreur
+            with pytest.raises(Exception):  # IntegrityError pour la contrainte NOT NULL
+                note = Note(
+                    content='Note sans créateur',
+                    creator_id=None
+                )
+                db.session.add(note)
+                db.session.commit()
 
     @pytest.mark.unit
     def test_note_creator_relationship(self, app):
@@ -193,7 +191,7 @@ class TestNoteModel:
         """Test la méthode to_dict()."""
         with app.app_context():
             user = self._create_sample_user('dictuser', 'dict@test.com')
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             
             note = Note(
                 content='Note pour test to_dict',
@@ -373,7 +371,7 @@ class TestNoteModel:
         """Test la gestion des différentes dates."""
         with app.app_context():
             user = self._create_sample_user('dateuser', 'date@test.com')
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)  # Supprimer timezone pour comparaison
             
             note = Note(
                 content='Note avec gestion des dates',

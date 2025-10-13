@@ -1,7 +1,7 @@
 """
 Modèle pour les assignations de notes aux utilisateurs.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from .. import db
 
 class Assignment(db.Model):
@@ -14,7 +14,7 @@ class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    assigned_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    assigned_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
 
     # Relations 
