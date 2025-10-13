@@ -12,9 +12,11 @@ db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager() # on instancie et on lie à l'app plus bas 
 
-def create_app():
+def create_app(test_config=None):
     """
     Factory function pour créer et configurer l'app Flask.
+    Args:
+        test_config (dict, optional): Configuration de test optionnelle.
     Returns: Flask: Instance configurée de l'app Flask avec les routes de base.
     """
     app = Flask(__name__)
@@ -40,6 +42,10 @@ def create_app():
         "SQLALCHEMY_TRACK_MODIFICATIONS", 
         "False"
     ).lower() == "true"
+
+    # Si une configuration de test est fournie, l'appliquer
+    if test_config is not None:
+        app.config.update(test_config)
 
     # Initialisation des extensions
     db.init_app(app)
