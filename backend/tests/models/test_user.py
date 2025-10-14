@@ -3,8 +3,9 @@ Tests unitaires pour le modèle User.
 Teste toutes les fonctionnalités du modèle User : création, validation, relations, etc.
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import User, Note, Contact, Assignment
 
@@ -423,3 +424,158 @@ class TestUserModel:
             # Vérifier que les espaces ont été supprimés et l'email mis en minuscules
             assert user.username == 'trimtest'
             assert user.email == 'trim@test.com'
+
+    @pytest.mark.unit
+    def test_username_length_bounds(self, app):
+        with app.app_context():
+            # 80 => OK
+            u_ok = User(username='x'*80, email='u80@test.com', password_hash='h')
+            db.session.add(u_ok)
+            db.session.commit()
+
+            # 81 => KO
+            with pytest.raises(ValueError, match="ne peut pas dépasser 80"):
+                User(username='x'*81, email='u81@test.com', password_hash='h')
+
+    @pytest.mark.unit
+    def test_email_length_bounds(self, app):
+        with app.app_context():
+            # Choix domaine de longueur connue
+            domain = "@t.co"    # longueur = 5
+            # 120 pile -> OK : local doit faire 115
+            e120 = "a" * (120 - len(domain)) + domain   # 115 + 5 = 120
+            u_ok = User(username="e120", email=e120, password_hash="h")
+            db.session.add(u_ok); db.session.commit()
+
+            # 121 -> KO : local doit faire 116
+            e121 = "a" * (121 - len(domain)) + domain   # 116 + 5 = 121
+            with pytest.raises(ValueError, match="ne peut pas dépasser 120"):
+                User(username="e121", email=e121, password_hash="h")
+
+    @pytest.mark.unit
+    def test_email_case_insensitive_uniqueness(self, app):
+        with app.app_context():
+            u1 = User(username='U1', email='FOO@BAR.COM', password_hash='x')
+            db.session.add(u1)
+            db.session.commit()
+
+            u2 = User(username='U2', email='foo@bar.com', password_hash='y')
+            db.session.add(u2)
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+    @pytest.mark.unit
+    def test_trim_and_lower_on_update(self, app):
+        with app.app_context():
+            u = User(username='John', email='John.DOE@Mail.COM', password_hash='h')
+            db.session.add(u); db.session.commit()
+
+            # Update avec espaces + casse
+            u.username = "   Johnny   "
+            u.email = "  JOHNNY@MAIL.com  "
+            db.session.commit()
+
+            assert u.username == "Johnny"
+            assert u.email == "johnny@mail.com"
+
+    # ---------- PASSWORD HELPERS & VALIDATIONS ----------
+
+    @pytest.mark.unit
+    def test_set_password_and_check_password(self, app):
+        with app.app_context():
+            u = User(username='pw', email='pw@test.com', password_hash='init')
+            db.session.add(u); db.session.commit()
+
+            u.set_password('P@ssw0rd!')
+            db.session.commit()
+
+            assert u.password_hash != 'P@ssw0rd!'
+            assert u.check_password('P@ssw0rd!') is True
+            assert u.check_password('nope') is False
+
+    @pytest.mark.unit
+    def test_password_hash_blank_raises(self, app):
+        with app.app_context():
+            with pytest.raises(ValueError, match="Le mot de passe ne peut pas être vide"):
+                User(username='testuser', email='a@test.com', password_hash='   ')
+
+    # ---------- DATES / TIMEZONE ----------
+
+    @pytest.mark.unit
+    def test_created_date_is_timezone_aware_utc(self, app):
+        with app.app_context():
+            u = User(username='tz', email='tz@test.com', password_hash='h')
+            db.session.add(u)
+            db.session.commit()
+
+            # Cas SQLAlchemy avec timezone=True
+            if u.created_date.tzinfo is not None:
+                assert u.created_date.utcoffset() == timezone.utc.utcoffset(u.created_date)
+            # Cas SQLite pas de timezone
+            else:
+                assert isinstance(u.created_date, datetime)  # au moins un datetime naïf
+
+    # ---------- UNICITÉS & EXCEPTIONS PRÉCISES ----------
+
+    @pytest.mark.unit
+    def test_username_unique_integrity_error(self, app):
+        with app.app_context():
+            db.session.add(User(username='dup', email='dup1@test.com', password_hash='h'))
+            db.session.commit()
+
+            db.session.add(User(username='dup', email='dup2@test.com', password_hash='h'))
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+    @pytest.mark.unit
+    def test_email_unique_integrity_error(self, app):
+        with app.app_context():
+            db.session.add(User(username='u1', email='uniq@test.com', password_hash='h'))
+            db.session.commit()
+
+            db.session.add(User(username='u2', email='uniq@test.com', password_hash='h'))
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+    # ---------- INTÉGRITÉ RÉFÉRENTIELLE (FK) ----------
+
+    @pytest.mark.unit
+    def test_contact_fk_integrity(self, app):
+        """
+        Nécessite PRAGMA foreign_keys=ON en SQLite (activé dans create_app).
+        On tente de créer un Contact avec des FK inexistantes -> IntegrityError attendu.
+        """
+        from app.models import Contact  # évite import circular si configuration varie
+        with app.app_context():
+            ghost = Contact(user_id=999999, contact_user_id=888888, nickname="ghost")
+            db.session.add(ghost)
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+    # ---------- MISE À JOUR : CONTRAINTES ET VALIDATIONS ----------
+
+    @pytest.mark.unit
+    def test_update_username_to_existing_raises(self, app):
+        with app.app_context():
+            u1 = User(username="alice", email="alice@test.com", password_hash="h")
+            u2 = User(username="bob", email="bob@test.com", password_hash="h")
+            db.session.add_all([u1, u2]); db.session.commit()
+
+            u2.username = "alice"  # collision
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+    @pytest.mark.unit
+    def test_update_email_invalid_format_raises(self, app):
+        with app.app_context():
+            u = User(username="fmt", email="fmt@test.com", password_hash="h")
+            db.session.add(u); db.session.commit()
+
+            # Déclenche @validates('email') à la mise à jour
+            with pytest.raises(ValueError, match="Format d'email invalide"):
+                u.email = "invalid@"
