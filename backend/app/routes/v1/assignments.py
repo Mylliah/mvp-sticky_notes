@@ -16,10 +16,10 @@ def create_assignment():
         abort(400, description="Missing note_id or user_id")
         
     # Vérifier que la note et l'utilisateur existent
-    note = Note.query.get(data["note_id"])
+    note = db.session.get(Note, data["note_id"])
     if not note:
         abort(400, description="Note not found")
-    user = User.query.get(data["user_id"])
+    user = db.session.get(User, data["user_id"])
     if not user:
         abort(400, description="User not found")
         
@@ -60,7 +60,7 @@ def update_assignment(assignment_id):
     
     if "user_id" in data:
         # Vérifier que le nouvel utilisateur existe
-        user = User.query.get(data["user_id"])
+        user = db.session.get(User, data["user_id"])
         if not user:
             abort(400, description="User not found")
         # Vérifier qu'il n'y a pas déjà une assignation avec ce user
