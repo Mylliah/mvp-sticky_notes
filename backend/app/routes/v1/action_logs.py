@@ -17,7 +17,8 @@ def create_action_log():
         abort(400, description="Missing user_id or action")
         
     # Vérifier que l'utilisateur existe
-    user = User.query.get(data["user_id"])
+    # Utiliser Session.get() (db.session.get) pour éviter l'API dépréciée Query.get()
+    user = db.session.get(User, data["user_id"])
     if not user:
         abort(400, description="User not found")
         
