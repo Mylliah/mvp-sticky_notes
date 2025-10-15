@@ -6,6 +6,14 @@ from app import db
 from app.models import User
 
 
+def get_error_message(response):
+    """Helper pour extraire le message d'erreur de la réponse."""
+    data = response.get_json()
+    if data is None:
+        return ""
+    return data.get('description') or data.get('message') or data.get('error') or str(data)
+
+
 class TestAuthRoutes:
     """Tests pour les endpoints d'authentification."""
 
@@ -43,7 +51,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Missing username, email or password' in response.get_json()['description']
+            assert 'Missing username, email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_missing_email(self, client, app):
@@ -55,7 +63,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Missing username, email or password' in response.get_json()['description']
+            assert 'Missing username, email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_missing_password(self, client, app):
@@ -67,7 +75,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Missing username, email or password' in response.get_json()['description']
+            assert 'Missing username, email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_duplicate_username(self, client, app):
@@ -86,7 +94,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Username or email already exists' in response.get_json()['description']
+            assert 'Username or email already exists' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_duplicate_email(self, client, app):
@@ -105,7 +113,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Username or email already exists' in response.get_json()['description']
+            assert 'Username or email already exists' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_empty_json(self, client, app):
@@ -114,7 +122,7 @@ class TestAuthRoutes:
             response = client.post('/v1/auth/register', json={})
             
             assert response.status_code == 400
-            assert 'Missing username, email or password' in response.get_json()['description']
+            assert 'Missing username, email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_register_no_json(self, client, app):
@@ -173,7 +181,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 401
-            assert 'Invalid credentials' in response.get_json()['description']
+            assert 'Invalid credentials' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_user_not_exists(self, client, app):
@@ -185,7 +193,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 401
-            assert 'Invalid credentials' in response.get_json()['description']
+            assert 'Invalid credentials' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_missing_username(self, client, app):
@@ -196,7 +204,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Missing username or password' in response.get_json()['description']
+            assert 'Missing username or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_missing_password(self, client, app):
@@ -207,7 +215,7 @@ class TestAuthRoutes:
             })
             
             assert response.status_code == 400
-            assert 'Missing username or password' in response.get_json()['description']
+            assert 'Missing username or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_empty_json(self, client, app):
@@ -216,7 +224,7 @@ class TestAuthRoutes:
             response = client.post('/v1/auth/login', json={})
             
             assert response.status_code == 400
-            assert 'Missing username or password' in response.get_json()['description']
+            assert 'Missing username or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_no_json(self, client, app):

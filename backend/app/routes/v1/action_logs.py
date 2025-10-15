@@ -13,21 +13,24 @@ bp = Blueprint('action_logs', __name__)
 def create_action_log():
     """Créer un nouveau log d'action."""
     data = request.get_json()
-    if not data or not data.get("user_id") or not data.get("action"):
-        abort(400, description="Missing user_id or action")
+    if not data or not data.get("user_id") or not data.get("action_type"):
+        abort(400, description="Missing user_id or action_type")
         
     # Vérifier que l'utilisateur existe
     # Utiliser Session.get() (db.session.get) pour éviter l'API dépréciée Query.get()
     user = db.session.get(User, data["user_id"])
     if not user:
         abort(400, description="User not found")
+    
+    # target_id est obligatoire
+    if not data.get("target_id"):
+        abort(400, description="Missing target_id")
         
     action_log = ActionLog(
         user_id=data["user_id"],
-        action=data["action"],
-        entity_type=data.get("entity_type"),
-        entity_id=data.get("entity_id"),
-        details=data.get("details"),
+        action_type=data["action_type"],
+        target_id=data["target_id"],
+        payload=data.get("payload"),
         timestamp=datetime.now(timezone.utc)
     )
     db.session.add(action_log)
@@ -43,17 +46,14 @@ def list_action_logs():
     
     # Filtres optionnels
     user_id = request.args.get('user_id', type=int)
-    action = request.args.get('action')
-    entity_type = request.args.get('entity_type')
+    action_type = request.args.get('action_type')
     
     query = ActionLog.query
     
     if user_id:
         query = query.filter_by(user_id=user_id)
-    if action:
-        query = query.filter_by(action=action)
-    if entity_type:
-        query = query.filter_by(entity_type=entity_type)
+    if action_type:
+        query = query.filter_by(action_type=action_type)
         
     logs = query.order_by(ActionLog.timestamp.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -88,9 +88,9 @@ def get_action_log_stats():
     
     # Compter les actions par type
     action_counts = db.session.query(
-        ActionLog.action,
+        ActionLog.action_type,
         func.count(ActionLog.id).label('count')
-    ).group_by(ActionLog.action).all()
+    ).group_by(ActionLog.action_type).all()
     
     # Compter les actions par utilisateur
     user_counts = db.session.query(
@@ -99,6 +99,6 @@ def get_action_log_stats():
     ).group_by(ActionLog.user_id).all()
     
     return {
-        "action_counts": [{"action": action, "count": count} for action, count in action_counts],
+        "action_counts": [{"action_type": action_type, "count": count} for action_type, count in action_counts],
         "user_counts": [{"user_id": user_id, "count": count} for user_id, count in user_counts]
     }
