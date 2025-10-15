@@ -46,10 +46,77 @@ def create_contact():
     return contact.to_dict(), 201
 
 @bp.get('/contacts')
+@jwt_required()
 def list_contacts():
-    """Lister tous les contacts."""
-    contacts = Contact.query.order_by(Contact.name.asc()).all()
-    return [c.to_dict() for c in contacts]
+    """
+    Lister les contacts de l'utilisateur connecté.
+    Inclut l'utilisateur lui-même en premier (pour s'auto-assigner des notes).
+    """
+    current_user_id = int(get_jwt_identity())  # Récupère l'ID de l'utilisateur CONNECTÉ
+    current_user = db.session.get(User, current_user_id)  # Seulement cet utilisateur CONNECTÉ
+    
+    # Construire la liste avec l'utilisateur lui-même en premier
+    result = []
+    
+    # Ajouter soi-même
+    result.append({
+        "id": current_user.id,  # SON propre ID
+        "user_id": current_user.id,
+        "contact_user_id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "nickname": "Moi",
+        "is_self": True,
+        "contact_action": None,
+        "created_date": None
+    })
+    
+    # Ajouter SES contacts
+    contacts = Contact.query.filter_by(user_id=current_user_id).order_by(Contact.nickname.asc()).all()  # Filtré par SON user_id
+    for contact in contacts:
+        contact_dict = contact.to_dict()
+        contact_dict["username"] = contact.contact_user.username
+        contact_dict["email"] = contact.contact_user.email
+        contact_dict["is_self"] = False
+        result.append(contact_dict)
+    
+    return result
+
+@bp.get('/contacts/assignable')  
+@jwt_required()
+def list_assignable_users():
+    """
+    Liste les utilisateurs à qui on peut assigner des notes :
+    - L'utilisateur courant lui-même (pour s'auto-assigner)
+    - Ses contacts
+    """
+    current_user_id = int(get_jwt_identity())  # L'utilisateur connecté
+    current_user = db.session.get(User, current_user_id)  # Lui uniquement
+    
+    # Construire la liste : soi-même + contacts
+    assignable = []
+    
+    # Ajouter soi-même en premier
+    assignable.append({
+        "id": current_user.id,  # ← SON ID
+        "username": current_user.username,
+        "email": current_user.email,
+        "nickname": "Moi",  # Affichage spécial
+        "is_self": True
+    })
+    
+    # Ajouter SES contacts
+    contacts = Contact.query.filter_by(user_id=current_user_id).all()  # SES contacts seulement
+    for contact in contacts:
+        assignable.append({
+            "id": contact.contact_user.id,
+            "username": contact.contact_user.username,
+            "email": contact.contact_user.email,
+            "nickname": contact.nickname,
+            "is_self": False
+        })
+    
+    return assignable
 
 @bp.get('/contacts/<int:contact_id>')
 def get_contact(contact_id):

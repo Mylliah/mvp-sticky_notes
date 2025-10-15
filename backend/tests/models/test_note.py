@@ -307,7 +307,79 @@ class TestNoteModel:
             note = Note(content='Mauvais type', creator_id=user.id)
             db.session.add(note)
             db.session.commit()
-            # Important doit être un bool, donc affectation d’un int ou str testée
+            # Important doit être un bool, donc affectation d'un int ou str testée
             note.important = "yes"
             with pytest.raises(Exception):
                 db.session.commit()
+
+    @pytest.mark.unit
+    def test_to_summary_dict_all_contacts_without_creator_as_current_user(self, app):
+        """Test de to_summary_dict() avec tous les contacts assignés MAIS créateur != current_user (ligne 70)."""
+        with app.app_context():
+            creator = self._create_sample_user('creator_all', 'creator_all@test.com')
+            other_user = self._create_sample_user('other', 'other@test.com')
+            u1 = self._create_sample_user('contact1', 'contact1@test.com')
+            u2 = self._create_sample_user('contact2', 'contact2@test.com')
+
+            # Ajouter contacts pour le créateur
+            contact1 = Contact(user_id=creator.id, contact_user_id=u1.id, nickname='Contact 1')
+            contact2 = Contact(user_id=creator.id, contact_user_id=u2.id, nickname='Contact 2')
+            db.session.add_all([contact1, contact2])
+            db.session.commit()
+
+            note = Note(content='Note pour tous', creator_id=creator.id)
+            db.session.add(note)
+            db.session.commit()
+
+            # Ajouter assignments pour tous les contacts
+            db.session.add_all([
+                Assignment(note_id=note.id, user_id=u1.id),
+                Assignment(note_id=note.id, user_id=u2.id),
+            ])
+            db.session.commit()
+
+            # Recharger la note pour s'assurer que les relations sont chargées
+            db.session.refresh(note)
+            db.session.refresh(creator)
+
+            # Test SANS current_user_id ou avec un autre user pour couvrir ligne 70
+            summary = note.to_summary_dict(current_user_id=other_user.id)
+            assert summary['assigned_display'] == 'à All'
+
+    @pytest.mark.unit
+    def test_to_summary_dict_three_or_less_assigned_users(self, app):
+        """Test de to_summary_dict() avec 3 utilisateurs ou moins (pas tous les contacts) (ligne 75)."""
+        with app.app_context():
+            creator = self._create_sample_user('creator_few', 'creator_few@test.com')
+            
+            # Créer 5 contacts pour le créateur
+            all_contacts = []
+            for i in range(5):
+                contact_user = self._create_sample_user(f'contact{i}', f'contact{i}@test.com')
+                contact = Contact(user_id=creator.id, contact_user_id=contact_user.id, nickname=f'Contact {i}')
+                db.session.add(contact)
+                all_contacts.append(contact_user)
+            db.session.commit()
+
+            note = Note(content='Note avec quelques assignés', creator_id=creator.id)
+            db.session.add(note)
+            db.session.commit()
+
+            # Assigner seulement 2 utilisateurs (pas tous les contacts)
+            db.session.add_all([
+                Assignment(note_id=note.id, user_id=all_contacts[0].id),
+                Assignment(note_id=note.id, user_id=all_contacts[1].id),
+            ])
+            db.session.commit()
+
+            # Recharger la note pour s'assurer que les relations sont chargées
+            db.session.refresh(note)
+
+            # Test pour couvrir ligne 75 (3 ou moins, pas tous les contacts)
+            summary = note.to_summary_dict()
+            # Doit afficher les usernames séparés par des virgules (2 users = 1 virgule)
+            assert ',' in summary['assigned_display']
+            assert not summary['assigned_display'].endswith('...')
+            assert summary['assigned_display'] != 'à All'
+
+
