@@ -16,7 +16,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)  # Augmenté de 128 à 255 car erreur mdp trop long
-    created_date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Ajout de la relation avec les contacts
     # Les relations sont configurées dans les autres modèles (Assignment, Note, Contact)
