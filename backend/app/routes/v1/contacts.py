@@ -130,24 +130,11 @@ def update_contact(contact_id):
     contact = Contact.query.get_or_404(contact_id)
     data = request.get_json()
     
-    if "name" in data:
-        contact.name = data["name"]
+    if "nickname" in data:
+        contact.nickname = data["nickname"]
         
-    if "email" in data:
-        # Vérifier que le nouvel email n'existe pas déjà
-        existing_contact = Contact.query.filter_by(email=data["email"]).filter(Contact.id != contact_id).first()
-        if existing_contact:
-            abort(400, description="Email already exists")
-        contact.email = data["email"]
-        
-    if "phone" in data:
-        contact.phone = data["phone"]
-        
-    if "company" in data:
-        contact.company = data["company"]
-        
-    if "notes" in data:
-        contact.notes = data["notes"]
+    if "contact_action" in data:
+        contact.contact_action = data["contact_action"]
         
     db.session.commit()
     return contact.to_dict()
