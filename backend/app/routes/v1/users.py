@@ -12,21 +12,31 @@ bp = Blueprint('users', __name__)
 # Route POST /users supprimée car redondante avec /auth/register
 
 @bp.get('/users')
+@jwt_required()
 def list_users():
-    """Lister tous les utilisateurs."""
+    """Lister tous les utilisateurs (authentification requise)."""
     users = User.query.order_by(User.id.asc()).all()
     return jsonify([u.to_dict() for u in users])
 
 @bp.get('/users/<int:user_id>')
+@jwt_required()
 def get_user(user_id):
-    """Récupérer un utilisateur par son ID."""
+    """Récupérer un utilisateur par son ID (authentification requise)."""
     user = User.query.get_or_404(user_id)
     return user.to_dict()
 
 @bp.put('/users/<int:user_id>')
+@jwt_required()
 def update_user(user_id):
-    """Mettre à jour un utilisateur."""
+    """Mettre à jour un utilisateur (seulement son propre profil ou admin)."""
+    current_user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
+    
+    # Vérifier que l'utilisateur modifie son propre profil
+    if current_user_id != user_id:
+        current_user = User.query.get(current_user_id)
+        if not current_user or not current_user.is_admin():
+            abort(403, description="You can only update your own profile")
     data = request.get_json()
     
     if "username" in data:
@@ -56,9 +66,17 @@ def update_user(user_id):
     return user.to_dict()
 
 @bp.delete('/users/<int:user_id>')
+@jwt_required()
 def delete_user(user_id):
-    """Supprimer un utilisateur."""
+    """Supprimer un utilisateur (seulement son propre compte ou admin)."""
+    current_user_id = int(get_jwt_identity())
     user = User.query.get_or_404(user_id)
+    
+    # Vérifier que l'utilisateur supprime son propre compte
+    if current_user_id != user_id:
+        current_user = User.query.get(current_user_id)
+        if not current_user or not current_user.is_admin():
+            abort(403, description="You can only delete your own account")
     db.session.delete(user)
     db.session.commit()
     return {"deleted": True}

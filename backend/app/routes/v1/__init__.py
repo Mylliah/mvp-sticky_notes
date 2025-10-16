@@ -8,7 +8,7 @@ def register_v1_blueprints(app):
     Enregistre tous les blueprints de la v1 avec le préfixe /v1.
     Args: app: Instance Flask où enregistrer les blueprints
     """
-    from . import notes, users, assignments, contacts, action_logs, auth
+    from . import notes, users, assignments, contacts, action_logs, auth, admin
     
     # Enregistrer tous les blueprints
     blueprints_to_register = [
@@ -17,7 +17,8 @@ def register_v1_blueprints(app):
         assignments.bp,
         contacts.bp,
         action_logs.bp,
-        auth.bp
+        auth.bp,
+        admin.bp
     ]
     
     for blueprint in blueprints_to_register:
