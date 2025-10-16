@@ -50,36 +50,36 @@ class TestActionLogsRoutes:
     # === POST /action_logs - Créer un log d'action ===
 
     @pytest.mark.integration
-    def test_create_action_log_success(self, client, app):
+    def test_create_action_log_success(self, client, app, user, auth_token):
         """Créer un log d'action avec succès."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             response = client.post('/v1/action_logs', json={
-                'user_id': user_id,
+                'user_id': user.id,
                 'action_type': 'CREATE',
                 'target_id': 1
-            })
+            }, headers=headers)
             
             assert response.status_code == 201
             data = response.get_json()
-            assert data['user_id'] == user_id
+            assert data['user_id'] == user.id
             assert data['action_type'] == 'CREATE'
             assert data['target_id'] == 1
             assert data['timestamp'] is not None
 
     @pytest.mark.integration
-    def test_create_action_log_with_all_fields(self, client, app):
+    def test_create_action_log_with_all_fields(self, client, app, user, auth_token):
         """Créer un log d'action avec tous les champs."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             response = client.post('/v1/action_logs', json={
-                'user_id': user_id,
+                'user_id': user.id,
                 'action_type': 'UPDATE',
                 'target_id': 123,
                 'payload': 'Updated note content'
-            })
+            }, headers=headers)
             
             assert response.status_code == 201
             data = response.get_json()
@@ -88,57 +88,61 @@ class TestActionLogsRoutes:
             assert data['payload'] == 'Updated note content'
 
     @pytest.mark.integration
-    def test_create_action_log_missing_user_id(self, client, app):
+    def test_create_action_log_missing_user_id(self, client, app, auth_token):
         """Créer un log sans user_id échoue."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
             response = client.post('/v1/action_logs', json={
                 'action_type': 'CREATE',
                 'target_id': 1
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             message = get_error_message(response)
             assert 'user_id' in message.lower()
 
     @pytest.mark.integration
-    def test_create_action_log_missing_action_type(self, client, app):
+    def test_create_action_log_missing_action_type(self, client, app, user, auth_token):
         """Créer un log sans action_type échoue."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             response = client.post('/v1/action_logs', json={
-                'user_id': user_id,
+                'user_id': user.id,
                 'target_id': 1
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             message = get_error_message(response)
             assert 'action_type' in message.lower()
     
     @pytest.mark.integration
-    def test_create_action_log_missing_target_id(self, client, app):
+    def test_create_action_log_missing_target_id(self, client, app, user, auth_token):
         """Créer un log sans target_id échoue."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             response = client.post('/v1/action_logs', json={
-                'user_id': user_id,
+                'user_id': user.id,
                 'action_type': 'CREATE'
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             message = get_error_message(response)
             assert 'target_id' in message.lower()
 
     @pytest.mark.integration
-    def test_create_action_log_user_not_found(self, client, app):
+    def test_create_action_log_user_not_found(self, client, app, auth_token):
         """Créer un log avec utilisateur inexistant échoue."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
             response = client.post('/v1/action_logs', json={
                 'user_id': 99999,
                 'action_type': 'CREATE',
                 'target_id': 1
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             message = get_error_message(response)
@@ -147,10 +151,12 @@ class TestActionLogsRoutes:
     # === GET /action_logs - Lister les logs d'actions ===
 
     @pytest.mark.integration
-    def test_list_action_logs_empty(self, client, app):
+    def test_list_action_logs_empty(self, client, app, auth_token):
         """Lister les logs quand il n'y en a aucun."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
-            response = client.get('/v1/action_logs')
+            response = client.get('/v1/action_logs', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -160,14 +166,14 @@ class TestActionLogsRoutes:
             assert data['pages'] == 0
 
     @pytest.mark.integration
-    def test_list_action_logs_with_logs(self, client, app):
+    def test_list_action_logs_with_logs(self, client, app, user, auth_token):
         """Lister les logs existants."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
-        log_id1 = create_action_log(app, user_id, 'CREATE')
-        log_id2 = create_action_log(app, user_id, 'UPDATE')
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        log_id1 = create_action_log(app, user.id, 'CREATE')
+        log_id2 = create_action_log(app, user.id, 'UPDATE')
         
         with app.app_context():
-            response = client.get('/v1/action_logs')
+            response = client.get('/v1/action_logs', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -178,17 +184,17 @@ class TestActionLogsRoutes:
             assert data['logs'][1]['action_type'] == 'CREATE'
 
     @pytest.mark.integration
-    def test_list_action_logs_pagination(self, client, app):
+    def test_list_action_logs_pagination(self, client, app, user, auth_token):
         """Tester la pagination des logs."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             # Créer 5 logs
             for i in range(5):
-                create_action_log(app, user_id, f'ACTION_{i}')
+                create_action_log(app, user.id, f'ACTION_{i}')
             
             # Page 1 avec 2 par page
-            response = client.get('/v1/action_logs?page=1&per_page=2')
+            response = client.get('/v1/action_logs?page=1&per_page=2', headers=headers)
             data = response.get_json()
             
             assert response.status_code == 200
@@ -199,34 +205,33 @@ class TestActionLogsRoutes:
             assert data['pages'] == 3
 
     @pytest.mark.integration
-    def test_list_action_logs_filter_by_user(self, client, app):
+    def test_list_action_logs_filter_by_user(self, client, app, user, user2, auth_token):
         """Filtrer les logs par utilisateur."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'pass')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            create_action_log(app, user_id1, 'CREATE')
-            create_action_log(app, user_id1, 'UPDATE')
-            create_action_log(app, user_id2, 'DELETE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'UPDATE')
+            create_action_log(app, user2.id, 'DELETE')
             
-            response = client.get(f'/v1/action_logs?user_id={user_id1}')
+            response = client.get(f'/v1/action_logs?user_id={user.id}', headers=headers)
             data = response.get_json()
             
             assert response.status_code == 200
             assert len(data['logs']) == 2
-            assert all(log['user_id'] == user_id1 for log in data['logs'])
+            assert all(log['user_id'] == user.id for log in data['logs'])
 
     @pytest.mark.integration
-    def test_list_action_logs_filter_by_action_type(self, client, app):
+    def test_list_action_logs_filter_by_action_type(self, client, app, user, auth_token):
         """Filtrer les logs par type d'action."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            create_action_log(app, user_id, 'CREATE')
-            create_action_log(app, user_id, 'CREATE')
-            create_action_log(app, user_id, 'UPDATE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'UPDATE')
             
-            response = client.get('/v1/action_logs?action_type=CREATE')
+            response = client.get('/v1/action_logs?action_type=CREATE', headers=headers)
             data = response.get_json()
             
             assert response.status_code == 200
@@ -234,35 +239,34 @@ class TestActionLogsRoutes:
             assert all(log['action_type'] == 'CREATE' for log in data['logs'])
 
     @pytest.mark.integration
-    def test_list_action_logs_multiple_filters(self, client, app):
+    def test_list_action_logs_multiple_filters(self, client, app, user, user2, auth_token):
         """Combiner plusieurs filtres."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'pass')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            create_action_log(app, user_id1, 'CREATE', target_id=1)
-            create_action_log(app, user_id1, 'UPDATE', target_id=2)
-            create_action_log(app, user_id2, 'CREATE', target_id=3)
-            create_action_log(app, user_id1, 'CREATE', target_id=4)
+            create_action_log(app, user.id, 'CREATE', target_id=1)
+            create_action_log(app, user.id, 'UPDATE', target_id=2)
+            create_action_log(app, user2.id, 'CREATE', target_id=3)
+            create_action_log(app, user.id, 'CREATE', target_id=4)
             
-            response = client.get(f'/v1/action_logs?user_id={user_id1}&action_type=CREATE')
+            response = client.get(f'/v1/action_logs?user_id={user.id}&action_type=CREATE', headers=headers)
             data = response.get_json()
             
             assert response.status_code == 200
             assert len(data['logs']) == 2
-            assert all(log['user_id'] == user_id1 for log in data['logs'])
+            assert all(log['user_id'] == user.id for log in data['logs'])
             assert all(log['action_type'] == 'CREATE' for log in data['logs'])
 
     # === GET /action_logs/<id> - Récupérer un log ===
 
     @pytest.mark.integration
-    def test_get_action_log_success(self, client, app):
+    def test_get_action_log_success(self, client, app, user, auth_token):
         """Récupérer un log par son ID."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
-        log_id = create_action_log(app, user_id, 'CREATE')
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        log_id = create_action_log(app, user.id, 'CREATE')
         
         with app.app_context():
-            response = client.get(f'/v1/action_logs/{log_id}')
+            response = client.get(f'/v1/action_logs/{log_id}', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -270,23 +274,25 @@ class TestActionLogsRoutes:
             assert data['action_type'] == 'CREATE'
 
     @pytest.mark.integration
-    def test_get_action_log_not_found(self, client, app):
+    def test_get_action_log_not_found(self, client, app, auth_token):
         """Récupérer un log inexistant retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
-            response = client.get('/v1/action_logs/99999')
+            response = client.get('/v1/action_logs/99999', headers=headers)
             
             assert response.status_code == 404
 
     # === DELETE /action_logs/<id> - Supprimer un log ===
 
     @pytest.mark.integration
-    def test_delete_action_log_success(self, client, app):
+    def test_delete_action_log_success(self, client, app, user, auth_token):
         """Supprimer un log avec succès."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'pass')
-        log_id = create_action_log(app, user_id, 'CREATE')
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        log_id = create_action_log(app, user.id, 'CREATE')
         
         with app.app_context():
-            response = client.delete(f'/v1/action_logs/{log_id}')
+            response = client.delete(f'/v1/action_logs/{log_id}', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -297,20 +303,24 @@ class TestActionLogsRoutes:
             assert deleted is None
 
     @pytest.mark.integration
-    def test_delete_action_log_not_found(self, client, app):
+    def test_delete_action_log_not_found(self, client, app, auth_token):
         """Supprimer un log inexistant retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
-            response = client.delete('/v1/action_logs/99999')
+            response = client.delete('/v1/action_logs/99999', headers=headers)
             
             assert response.status_code == 404
 
     # === GET /action_logs/stats - Récupérer les statistiques ===
 
     @pytest.mark.integration
-    def test_get_action_log_stats_empty(self, client, app):
+    def test_get_action_log_stats_empty(self, client, app, auth_token):
         """Récupérer les stats quand il n'y a aucun log."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
         with app.app_context():
-            response = client.get('/v1/action_logs/stats')
+            response = client.get('/v1/action_logs/stats', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -318,23 +328,22 @@ class TestActionLogsRoutes:
             assert data['user_counts'] == []
 
     @pytest.mark.integration
-    def test_get_action_log_stats_with_data(self, client, app):
+    def test_get_action_log_stats_with_data(self, client, app, user, user2, auth_token):
         """Récupérer les stats avec des logs."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'pass')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
             # user1: 3 CREATE, 2 UPDATE
-            create_action_log(app, user_id1, 'CREATE')
-            create_action_log(app, user_id1, 'CREATE')
-            create_action_log(app, user_id1, 'CREATE')
-            create_action_log(app, user_id1, 'UPDATE')
-            create_action_log(app, user_id1, 'UPDATE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'CREATE')
+            create_action_log(app, user.id, 'UPDATE')
+            create_action_log(app, user.id, 'UPDATE')
             
             # user2: 1 DELETE
-            create_action_log(app, user_id2, 'DELETE')
+            create_action_log(app, user2.id, 'DELETE')
             
-            response = client.get('/v1/action_logs/stats')
+            response = client.get('/v1/action_logs/stats', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -347,5 +356,5 @@ class TestActionLogsRoutes:
             
             # Vérifier les comptes par utilisateur
             user_counts = {item['user_id']: item['count'] for item in data['user_counts']}
-            assert user_counts[user_id1] == 5
-            assert user_counts[user_id2] == 1
+            assert user_counts[user.id] == 5
+            assert user_counts[user2.id] == 1

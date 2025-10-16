@@ -95,11 +95,14 @@ class TestNoteCollaborationWorkflows:
             assert note['creator_id'] == alice_id
             
             # 5. Alice assigne la note à Bob
-            response = client.post('/v1/assignments', json={
-                'note_id': note_id,
-                'user_id': bob_id,
-                'is_read': False
-            })
+            response = client.post('/v1/assignments',
+                headers={'Authorization': f'Bearer {token_alice}'},
+                json={
+                    'note_id': note_id,
+                    'user_id': bob_id,
+                    'is_read': False
+                }
+            )
             assert response.status_code == 201
             assignment = response.get_json()
             assignment_id = assignment['id']
@@ -134,6 +137,7 @@ class TestNoteCollaborationWorkflows:
             
             # 8. Bob marque la note comme lue
             response = client.put(f'/v1/assignments/{assignment_id}',
+                headers={'Authorization': f'Bearer {token_bob}'},
                 json={'is_read': True}
             )
             assert response.status_code == 200
@@ -143,18 +147,24 @@ class TestNoteCollaborationWorkflows:
             # === Phase 5: Vérifications finales ===
             
             # 9. Alice vérifie que l'assignation a été mise à jour
-            response = client.get(f'/v1/assignments/{assignment_id}')
+            response = client.get(f'/v1/assignments/{assignment_id}',
+                headers={'Authorization': f'Bearer {token_alice}'}
+            )
             assert response.status_code == 200
             assignment_check = response.get_json()
             assert assignment_check['is_read'] is True
             
             # 10. Vérifier qu'il y a des action_logs pour les utilisateurs
-            response = client.get(f'/v1/action_logs?user_id={alice_id}')
+            response = client.get(f'/v1/action_logs?user_id={alice_id}',
+                headers={'Authorization': f'Bearer {token_alice}'}
+            )
             assert response.status_code == 200
             alice_logs = response.get_json()
             assert alice_logs['total'] >= 0  # Alice a fait des actions
             
-            response = client.get(f'/v1/action_logs?user_id={bob_id}')
+            response = client.get(f'/v1/action_logs?user_id={bob_id}',
+                headers={'Authorization': f'Bearer {token_alice}'}
+            )
             assert response.status_code == 200
             bob_logs = response.get_json()
             assert bob_logs['total'] >= 0  # Bob a fait des actions
@@ -290,25 +300,37 @@ class TestNoteCollaborationWorkflows:
             # Manager assigne à tous les membres
             assignments = []
             for member_id in team_members:
-                response = client.post('/v1/assignments', json={
-                    'note_id': note_id,
-                    'user_id': member_id
-                })
+                response = client.post('/v1/assignments',
+                    headers={'Authorization': f'Bearer {token_manager}'},
+                    json={
+                        'note_id': note_id,
+                        'user_id': member_id
+                    }
+                )
                 assert response.status_code == 201
                 assignments.append(response.get_json())
             
             # Vérifier qu'il y a bien 3 assignations
             assert len(assignments) == 3
             
-            # Member 1 marque comme lu
+            # Member 1 se connecte et marque comme lu
+            response = client.post('/v1/auth/login', json={
+                'username': 'member1',
+                'password': 'Member1Pass!'
+            })
+            token_member1 = response.get_json()['access_token']
+            
             response = client.put(f'/v1/assignments/{assignments[0]["id"]}',
+                headers={'Authorization': f'Bearer {token_member1}'},
                 json={'is_read': True}
             )
             assert response.status_code == 200
             
             # Vérifier que seule l'assignation de Member 1 est lue
             for i, assignment in enumerate(assignments):
-                response = client.get(f'/v1/assignments/{assignment["id"]}')
+                response = client.get(f'/v1/assignments/{assignment["id"]}',
+                    headers={'Authorization': f'Bearer {token_manager}'}
+                )
                 data = response.get_json()
                 if i == 0:
                     assert data['is_read'] is True
@@ -521,10 +543,13 @@ class TestErrorHandlingWorkflows:
             assert 'yourself' in error_msg.lower()
             
             # 2. Essayer d'assigner une note inexistante
-            response = client.post('/v1/assignments', json={
-                'note_id': 99999,
-                'user_id': user_id
-            })
+            response = client.post('/v1/assignments',
+                headers={'Authorization': f'Bearer {token}'},
+                json={
+                    'note_id': 99999,
+                    'user_id': user_id
+                }
+            )
             assert response.status_code == 400
             
             # 3. Créer un contact, puis essayer de créer un doublon
@@ -558,17 +583,23 @@ class TestErrorHandlingWorkflows:
             )
             note_id = response.get_json()['id']
             
-            response = client.post('/v1/assignments', json={
-                'note_id': note_id,
-                'user_id': contact_id
-            })
+            response = client.post('/v1/assignments',
+                headers={'Authorization': f'Bearer {token}'},
+                json={
+                    'note_id': note_id,
+                    'user_id': contact_id
+                }
+            )
             assert response.status_code == 201
             
             # Essayer de re-créer la même assignation
-            response = client.post('/v1/assignments', json={
-                'note_id': note_id,
-                'user_id': contact_id
-            })
+            response = client.post('/v1/assignments',
+                headers={'Authorization': f'Bearer {token}'},
+                json={
+                    'note_id': note_id,
+                    'user_id': contact_id
+                }
+            )
             assert response.status_code == 400
             error_msg = response.get_json().get('description', '') or response.get_json().get('message', '')
             assert 'already' in error_msg.lower()

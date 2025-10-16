@@ -10,8 +10,9 @@ from ...models import ActionLog, User
 bp = Blueprint('action_logs', __name__)
 
 @bp.post('/action_logs')
+@jwt_required()
 def create_action_log():
-    """Créer un nouveau log d'action."""
+    """Créer un nouveau log d'action (authentification requise)."""
     data = request.get_json()
     if not data or not data.get("user_id") or not data.get("action_type"):
         abort(400, description="Missing user_id or action_type")
@@ -38,8 +39,9 @@ def create_action_log():
     return action_log.to_dict(), 201
 
 @bp.get('/action_logs')
+@jwt_required()
 def list_action_logs():
-    """Lister tous les logs d'actions."""
+    """Lister tous les logs d'actions (authentification requise)."""
     # Pagination pour éviter de surcharger
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
@@ -68,22 +70,25 @@ def list_action_logs():
     }
 
 @bp.get('/action_logs/<int:log_id>')
+@jwt_required()
 def get_action_log(log_id):
-    """Récupérer un log d'action par son ID."""
+    """Récupérer un log d'action par son ID (authentification requise)."""
     action_log = ActionLog.query.get_or_404(log_id)
     return action_log.to_dict()
 
 @bp.delete('/action_logs/<int:log_id>')
+@jwt_required()
 def delete_action_log(log_id):
-    """Supprimer un log d'action."""
+    """Supprimer un log d'action (authentification requise)."""
     action_log = ActionLog.query.get_or_404(log_id)
     db.session.delete(action_log)
     db.session.commit()
     return {"deleted": True}
 
 @bp.get('/action_logs/stats')
+@jwt_required()
 def get_action_log_stats():
-    """Récupérer des statistiques sur les actions."""
+    """Récupérer des statistiques sur les actions (authentification requise)."""
     from sqlalchemy import func
     
     # Compter les actions par type
