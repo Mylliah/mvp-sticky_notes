@@ -36,7 +36,12 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    return {"msg": "User created successfully", "username": user.username}, 201
+    return {
+        "msg": "User created successfully",
+        "id": user.id,
+        "username": user.username,
+        "email": user.email
+    }, 201
 
 
 @bp.post('/auth/login')

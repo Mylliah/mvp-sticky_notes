@@ -4,6 +4,7 @@ Routes pour la gestion des notes.
 from datetime import datetime, timezone
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import or_
 from ... import db
 from ...models import Note, Assignment
 
@@ -29,13 +30,25 @@ def create_note():
     return note.to_dict(), 201
 
 
-@bp.get('/notes')
+@bp.route('/notes', methods=['GET'])
 @jwt_required()
-def list_notes():
-    """Lister toutes les notes (résumé pour vignettes, authentifié)."""
-    notes = Note.query.order_by(Note.id.asc()).all()
-    current_user_id = int(get_jwt_identity())
-    return [note.to_summary_dict(current_user_id=current_user_id) for note in notes]
+def get_notes():
+    """
+    Get all notes with their assignments
+    ---
+    Returns list of notes created by OR assigned to current user
+    """
+    current_user_id = get_jwt_identity()
+    # Récupérer les notes créées par l'utilisateur OU qui lui sont assignées
+    notes = Note.query.join(
+        Assignment, Note.id == Assignment.note_id, isouter=True
+    ).filter(
+        or_(
+            Note.creator_id == current_user_id,
+            Assignment.user_id == current_user_id
+        )
+    ).distinct().order_by(Note.id.asc()).all()
+    return [note.to_dict() for note in notes], 200
 
 
 @bp.get('/notes/<int:note_id>')
