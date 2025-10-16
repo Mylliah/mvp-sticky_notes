@@ -139,8 +139,8 @@ class TestNotesRoutes:
             assert response.status_code == 200
             data = response.get_json()
             assert len(data) == 2
-            assert data[0]['preview'] == 'Note 1'
-            assert data[1]['preview'] == 'Note 2'
+            assert data[0]['content'] == 'Note 1'
+            assert data[1]['content'] == 'Note 2'
             assert data[1]['important'] is True
 
     @pytest.mark.integration
