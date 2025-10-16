@@ -16,6 +16,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)  # Augmenté de 128 à 255 car erreur mdp trop long
+    role = db.Column(db.String(20), nullable=False, default='user')  # 'user' ou 'admin'
     created_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Ajout de la relation avec les contacts
@@ -61,6 +62,7 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "email": self.email,
+            "role": self.role,
             "created_date": self.created_date.isoformat() if self.created_date else None,
         }
 
@@ -70,3 +72,7 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def is_admin(self):
+        """Vérifie si l'utilisateur est un administrateur."""
+        return self.role == 'admin'

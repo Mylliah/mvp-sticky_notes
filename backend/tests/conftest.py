@@ -5,6 +5,8 @@ Ce module contient les fixtures pytest pour les tests.
 import os
 import tempfile
 import pytest
+from werkzeug.security import generate_password_hash
+from flask_jwt_extended import create_access_token
 from app import create_app, db
 from app.models import User, Note, Contact, Assignment, ActionLog
 
@@ -64,6 +66,71 @@ def sample_user(app):
         return user
 
 
+# Alias pour compatibilité avec les nouveaux tests
+@pytest.fixture
+def user(app):
+    """Créer un utilisateur de test (avec password hashé)."""
+    with app.app_context():
+        user = User(
+            username='testuser',
+            email='test@example.com',
+            password_hash=generate_password_hash('password123')
+        )
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+        yield user
+        # Cleanup
+        try:
+            db.session.delete(user)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
+@pytest.fixture
+def user2(app):
+    """Créer un deuxième utilisateur de test."""
+    with app.app_context():
+        user = User(
+            username='testuser2',
+            email='test2@example.com',
+            password_hash=generate_password_hash('password123')
+        )
+        db.session.add(user)
+        db.session.commit()
+        db.session.refresh(user)
+        yield user
+        # Cleanup
+        try:
+            db.session.delete(user)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
+@pytest.fixture
+def admin_user(app):
+    """Créer un utilisateur admin de test."""
+    with app.app_context():
+        admin = User(
+            username='admin',
+            email='admin@example.com',
+            password_hash=generate_password_hash('admin123'),
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        db.session.refresh(admin)
+        yield admin
+        # Cleanup
+        try:
+            db.session.delete(admin)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
 @pytest.fixture
 def sample_users(app):
     """Fixture pour créer plusieurs utilisateurs de test."""
@@ -94,6 +161,85 @@ def sample_note(app, sample_user):
         db.session.add(note)
         db.session.commit()
         return note
+
+
+@pytest.fixture
+def note(app, user):
+    """Créer une note de test."""
+    with app.app_context():
+        note = Note(
+            title='Test Note',
+            content='This is a test note',
+            statut='en_cours',
+            important=False,
+            user_id=user.id
+        )
+        db.session.add(note)
+        db.session.commit()
+        db.session.refresh(note)
+        yield note
+        # Cleanup
+        try:
+            db.session.delete(note)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
+@pytest.fixture
+def contact(app, user):
+    """Créer un contact de test."""
+    with app.app_context():
+        contact = Contact(
+            nom='Doe',
+            prenom='John',
+            email='john.doe@example.com',
+            user_id=user.id
+        )
+        db.session.add(contact)
+        db.session.commit()
+        db.session.refresh(contact)
+        yield contact
+        # Cleanup
+        try:
+            db.session.delete(contact)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
+@pytest.fixture
+def assignment(app, note, contact):
+    """Créer une assignation de test."""
+    with app.app_context():
+        assignment = Assignment(
+            note_id=note.id,
+            contact_id=contact.id
+        )
+        db.session.add(assignment)
+        db.session.commit()
+        db.session.refresh(assignment)
+        yield assignment
+        # Cleanup
+        try:
+            db.session.delete(assignment)
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+
+@pytest.fixture
+def auth_token(app, user):
+    """Créer un token JWT pour l'utilisateur de test."""
+    with app.app_context():
+        return create_access_token(identity=str(user.id))
+
+
+@pytest.fixture
+def admin_token(app, admin_user):
+    """Créer un token JWT pour l'admin de test."""
+    with app.app_context():
+        return create_access_token(identity=str(admin_user.id))
 
 
 @pytest.fixture
