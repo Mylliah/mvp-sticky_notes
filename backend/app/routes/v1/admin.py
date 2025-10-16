@@ -65,7 +65,7 @@ def delete_user_admin(user_id):
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
     db.session.commit()
-    return jsonify({"msg": f"User {user.username} deleted successfully"}), 200
+    return jsonify({"message": "User deleted"}), 200
 
 
 @bp.put('/admin/users/<int:user_id>/role')
@@ -90,6 +90,7 @@ def update_user_role(user_id):
     db.session.commit()
     
     return jsonify({
-        "msg": f"User {user.username} role updated to {new_role}",
+        "message": "User role updated",
+        "role": user.role,
         "user": user.to_dict()
     }), 200

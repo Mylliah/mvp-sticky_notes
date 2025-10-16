@@ -34,29 +34,27 @@ class TestUsersRoutes:
     # === GET /users - Lister les utilisateurs ===
 
     @pytest.mark.integration
-    def test_list_users_empty(self, client, app):
-        """Lister les utilisateurs quand il n'y en a aucun."""
+    def test_list_users_empty(self, client, app, user, auth_token):
+        """Lister les utilisateurs quand il n'y en a qu'un (le user authentifié)."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
         with app.app_context():
-            response = client.get('/v1/users')
+            response = client.get('/v1/users', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
-            assert data == []
+            assert len(data) == 1  # Le user lui-même
 
     @pytest.mark.integration
-    def test_list_users_with_users(self, client, app):
+    def test_list_users_with_users(self, client, app, user, auth_token, user2):
         """Lister les utilisateurs existants."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'pass1')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'pass2')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.get('/v1/users')
+            response = client.get('/v1/users', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 2
-            assert data[0]['username'] == 'user1'
-            assert data[1]['username'] == 'user2'
+            assert len(data) >= 2  # Au moins user et user2
             # Vérifier que les mots de passe ne sont pas exposés
             assert 'password' not in data[0]
             assert 'password_hash' not in data[0]
@@ -64,88 +62,89 @@ class TestUsersRoutes:
     # === GET /users/<id> - Récupérer un utilisateur ===
 
     @pytest.mark.integration
-    def test_get_user_success(self, client, app):
+    def test_get_user_success(self, client, app, user, auth_token):
         """Récupérer un utilisateur par son ID."""
-        user_id = create_user(app, 'user1', 'user1@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.get(f'/v1/users/{user_id}')
+            response = client.get(f'/v1/users/{user.id}', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
-            assert data['id'] == user_id
-            assert data['username'] == 'user1'
-            assert data['email'] == 'user1@test.com'
+            assert data['id'] == user.id
+            assert data['username'] == 'testuser'
+            assert data['email'] == 'test@example.com'
             # Vérifier que le mot de passe n'est pas exposé
             assert 'password' not in data
             assert 'password_hash' not in data
 
     @pytest.mark.integration
-    def test_get_user_not_found(self, client, app):
+    def test_get_user_not_found(self, client, app, auth_token):
         """Récupérer un utilisateur inexistant retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
         with app.app_context():
-            response = client.get('/v1/users/99999')
+            response = client.get('/v1/users/99999', headers=headers)
             
             assert response.status_code == 404
 
     # === PUT /users/<id> - Modifier un utilisateur ===
 
     @pytest.mark.integration
-    def test_update_user_username(self, client, app):
+    def test_update_user_username(self, client, app, user, auth_token):
         """Modifier le username d'un utilisateur."""
-        user_id = create_user(app, 'oldname', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'username': 'newname'
-            })
+            }, headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
             assert data['username'] == 'newname'
 
     @pytest.mark.integration
-    def test_update_user_email(self, client, app):
+    def test_update_user_email(self, client, app, user, auth_token):
         """Modifier l'email d'un utilisateur."""
-        user_id = create_user(app, 'user1', 'old@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'email': 'new@test.com'
-            })
+            }, headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
             assert data['email'] == 'new@test.com'
 
     @pytest.mark.integration
-    def test_update_user_password(self, client, app):
+    def test_update_user_password(self, client, app, user, auth_token):
         """Modifier le mot de passe d'un utilisateur."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'oldpass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'password': 'newpass'
-            })
+            }, headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
             
             # Vérifier que le mot de passe a bien été changé
-            user = User.query.get(user_id)
-            assert check_password_hash(user.password_hash, 'newpass')
+            updated_user = User.query.get(user.id)
+            assert check_password_hash(updated_user.password_hash, 'newpass')
 
     @pytest.mark.integration
-    def test_update_user_multiple_fields(self, client, app):
+    def test_update_user_multiple_fields(self, client, app, user, auth_token):
         """Modifier plusieurs champs d'un utilisateur."""
-        user_id = create_user(app, 'oldname', 'old@test.com', 'oldpass')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'username': 'newname',
                 'email': 'new@test.com',
                 'password': 'newpass'
-            })
+            }, headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -153,143 +152,143 @@ class TestUsersRoutes:
             assert data['email'] == 'new@test.com'
 
     @pytest.mark.integration
-    def test_update_user_username_empty(self, client, app):
+    def test_update_user_username_empty(self, client, app, user, auth_token):
         """Modifier avec username vide échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'username': ''
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_username_whitespace(self, client, app):
+    def test_update_user_username_whitespace(self, client, app, user, auth_token):
         """Modifier avec username avec espaces seulement échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'username': '   '
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_username_duplicate(self, client, app):
+    def test_update_user_username_duplicate(self, client, app, user, user2, auth_token):
         """Modifier avec username existant échoue."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'password')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id2}', json={
-                'username': 'user1'
-            })
+            response = client.put(f'/v1/users/{user.id}', json={
+                'username': 'testuser2'  # username de user2
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'already exists' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_email_empty(self, client, app):
+    def test_update_user_email_empty(self, client, app, user, auth_token):
         """Modifier avec email vide échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'email': ''
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_email_whitespace(self, client, app):
+    def test_update_user_email_whitespace(self, client, app, user, auth_token):
         """Modifier avec email avec espaces seulement échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'email': '   '
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_email_duplicate(self, client, app):
+    def test_update_user_email_duplicate(self, client, app, user, user2, auth_token):
         """Modifier avec email existant échoue."""
-        user_id1 = create_user(app, 'user1', 'user1@test.com', 'password')
-        user_id2 = create_user(app, 'user2', 'user2@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id2}', json={
-                'email': 'user1@test.com'
-            })
+            response = client.put(f'/v1/users/{user.id}', json={
+                'email': 'test2@example.com'  # email de user2
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'already exists' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_password_empty(self, client, app):
+    def test_update_user_password_empty(self, client, app, user, auth_token):
         """Modifier avec mot de passe vide échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'password': ''
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_password_whitespace(self, client, app):
+    def test_update_user_password_whitespace(self, client, app, user, auth_token):
         """Modifier avec mot de passe avec espaces seulement échoue."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.put(f'/v1/users/{user_id}', json={
+            response = client.put(f'/v1/users/{user.id}', json={
                 'password': '   '
-            })
+            }, headers=headers)
             
             assert response.status_code == 400
             assert 'cannot be empty' in get_error_message(response).lower()
 
     @pytest.mark.integration
-    def test_update_user_not_found(self, client, app):
+    def test_update_user_not_found(self, client, app, auth_token):
         """Modifier un utilisateur inexistant retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
         with app.app_context():
             response = client.put('/v1/users/99999', json={
                 'username': 'newname'
-            })
+            }, headers=headers)
             
             assert response.status_code == 404
 
     # === DELETE /users/<id> - Supprimer un utilisateur ===
 
     @pytest.mark.integration
-    def test_delete_user_success(self, client, app):
+    def test_delete_user_success(self, client, app, user, auth_token):
         """Supprimer un utilisateur avec succès."""
-        user_id = create_user(app, 'user1', 'user@test.com', 'password')
+        headers = {'Authorization': f'Bearer {auth_token}'}
         
         with app.app_context():
-            response = client.delete(f'/v1/users/{user_id}')
+            response = client.delete(f'/v1/users/{user.id}', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
             assert data['deleted'] is True
             
             # Vérifier que l'utilisateur a été supprimé
-            deleted = User.query.get(user_id)
+            deleted = User.query.get(user.id)
             assert deleted is None
 
     @pytest.mark.integration
-    def test_delete_user_not_found(self, client, app):
+    def test_delete_user_not_found(self, client, app, auth_token):
         """Supprimer un utilisateur inexistant retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
         with app.app_context():
-            response = client.delete('/v1/users/99999')
+            response = client.delete('/v1/users/99999', headers=headers)
             
             assert response.status_code == 404

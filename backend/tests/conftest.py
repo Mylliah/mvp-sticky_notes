@@ -168,11 +168,10 @@ def note(app, user):
     """Créer une note de test."""
     with app.app_context():
         note = Note(
-            title='Test Note',
             content='This is a test note',
-            statut='en_cours',
-            important=False,
-            user_id=user.id
+            creator_id=user.id,
+            status='en_cours',
+            important=False
         )
         db.session.add(note)
         db.session.commit()
