@@ -91,5 +91,6 @@ def update_user_role(user_id):
     
     return jsonify({
         "msg": f"User {user.username} role updated to {new_role}",
+        "role": user.role,
         "user": user.to_dict()
     }), 200
