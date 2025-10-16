@@ -9,8 +9,9 @@ from ...models import Assignment, Note, User
 bp = Blueprint('assignments', __name__)
 
 @bp.post('/assignments')
+@jwt_required()
 def create_assignment():
-    """Créer une nouvelle assignation."""
+    """Créer une nouvelle assignation (authentification requise)."""
     data = request.get_json()
     if not data or not data.get("note_id") or not data.get("user_id"):
         abort(400, description="Missing note_id or user_id")
@@ -41,20 +42,23 @@ def create_assignment():
     return assignment.to_dict(), 201
 
 @bp.get('/assignments')
+@jwt_required()
 def list_assignments():
-    """Lister toutes les assignations."""
+    """Lister toutes les assignations (authentification requise)."""
     assignments = Assignment.query.order_by(Assignment.id.asc()).all()
     return [a.to_dict() for a in assignments]
 
 @bp.get('/assignments/<int:assignment_id>')
+@jwt_required()
 def get_assignment(assignment_id):
     """Récupérer une assignation par son ID."""
     assignment = Assignment.query.get_or_404(assignment_id)
     return assignment.to_dict()
 
 @bp.put('/assignments/<int:assignment_id>')
+@jwt_required()
 def update_assignment(assignment_id):
-    """Mettre à jour une assignation."""
+    """Mettre à jour une assignation (authentification requise)."""
     assignment = Assignment.query.get_or_404(assignment_id)
     data = request.get_json()
     
@@ -79,8 +83,9 @@ def update_assignment(assignment_id):
     return assignment.to_dict()
 
 @bp.delete('/assignments/<int:assignment_id>')
+@jwt_required()
 def delete_assignment(assignment_id):
-    """Supprimer une assignation."""
+    """Supprimer une assignation (authentification requise)."""
     assignment = Assignment.query.get_or_404(assignment_id)
     db.session.delete(assignment)
     db.session.commit()
