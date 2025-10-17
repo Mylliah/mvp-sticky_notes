@@ -309,7 +309,8 @@ class TestUserModel:
         """Test validation avec email trop long."""
         with app.app_context():
             long_email = 'a' * 115 + '@test.com'  # Email trop long : 115 + 9 = 124 caractères (> 120)
-            with pytest.raises(ValueError, match="L'email ne peut pas dépasser 120 caractères"):
+            # email-validator détecte que la partie locale est trop longue (max 64)
+            with pytest.raises(ValueError, match="Format d'email invalide"):
                 user = User(
                     username='emaillong',
                     email=long_email,
@@ -440,17 +441,17 @@ class TestUserModel:
     @pytest.mark.unit
     def test_email_length_bounds(self, app):
         with app.app_context():
-            # Choix domaine de longueur connue
-            domain = "@t.co"    # longueur = 5
-            # 120 pile -> OK : local doit faire 115
-            e120 = "a" * (120 - len(domain)) + domain   # 115 + 5 = 120
-            u_ok = User(username="e120", email=e120, password_hash="h")
+            # email-validator limite la partie locale à 64 caractères (RFC 5321)
+            # Test avec un email valide de longueur raisonnable
+            domain = "@example.com"
+            e_valid = "test.user" + domain  # ~20 caractères, bien en dessous de 64
+            u_ok = User(username="evalid", email=e_valid, password_hash="h")
             db.session.add(u_ok); db.session.commit()
 
-            # 121 -> KO : local doit faire 116
-            e121 = "a" * (121 - len(domain)) + domain   # 116 + 5 = 121
-            with pytest.raises(ValueError, match="ne peut pas dépasser 120"):
-                User(username="e121", email=e121, password_hash="h")
+            # Test avec partie locale trop longue (>64)
+            e_toolong = "a" * 65 + domain
+            with pytest.raises(ValueError, match="Format d'email invalide"):
+                User(username="etoolong", email=e_toolong, password_hash="h")
 
     @pytest.mark.unit
     def test_email_case_insensitive_uniqueness(self, app):

@@ -34,25 +34,25 @@ class TestNotesIsolation:
         assert b"Only the creator" in response.data
     
     def test_cannot_delete_other_user_note(self, client, app):
-        """Un utilisateur ne peut pas supprimer la note d'un autre."""
+        """Un utilisateur ne peut pas supprimer la note d'un autre s'il n'est ni créateur ni destinataire."""
         # Créer 2 utilisateurs
         user1 = User(username="alice", email="alice@test.com", password_hash="hash1")
         user2 = User(username="bob", email="bob@test.com", password_hash="hash2")
         db.session.add_all([user1, user2])
         db.session.commit()
         
-        # Alice crée une note
+        # Alice crée une note (SANS l'assigner à Bob)
         note = Note(content="Note d'Alice", creator_id=user1.id)
         db.session.add(note)
         db.session.commit()
         
-        # Bob essaie de supprimer la note d'Alice
+        # Bob essaie de supprimer la note d'Alice (mais il n'est pas destinataire)
         token_bob = create_access_token(identity=str(user2.id))
         response = client.delete(f'/v1/notes/{note.id}',
                                 headers={"Authorization": f"Bearer {token_bob}"})
         
         assert response.status_code == 403
-        assert b"Only the creator" in response.data
+        assert b"Only the creator or recipient" in response.data
     
     def test_creator_can_update_own_note(self, client, app):
         """Le créateur peut modifier sa propre note."""
@@ -298,23 +298,8 @@ class TestActionLogsIsolation:
         assert response.status_code == 403
         assert b"your own action logs" in response.data
     
-    def test_cannot_delete_other_user_log(self, client, app):
-        """Un utilisateur ne peut pas supprimer les logs d'un autre."""
-        user1 = User(username="alice", email="alice@test.com", password_hash="hash1")
-        user2 = User(username="bob", email="bob@test.com", password_hash="hash2")
-        db.session.add_all([user1, user2])
-        db.session.commit()
-        
-        log = ActionLog(user_id=user1.id, action_type="login", target_id=1)
-        db.session.add(log)
-        db.session.commit()
-        
-        token_bob = create_access_token(identity=str(user2.id))
-        response = client.delete(f'/v1/action_logs/{log.id}',
-                                headers={"Authorization": f"Bearer {token_bob}"})
-        
-        assert response.status_code == 403
-        assert b"your own action logs" in response.data
+    # NOTE: Test de suppression des logs supprimé car route DELETE /action_logs/<id> 
+    # a été retirée pour garantir l'immuabilité des logs (traçabilité)
     
     def test_owner_can_view_own_log(self, client, app):
         """Le propriétaire peut voir son propre log."""

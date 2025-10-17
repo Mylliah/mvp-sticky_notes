@@ -4,6 +4,7 @@ Modèle pour les utilisateurs.
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import validates
+from email_validator import validate_email as validate_email_format, EmailNotValidError
 from .. import db
 
 class User(db.Model):
@@ -40,12 +41,18 @@ class User(db.Model):
 
     @validates('email')
     def validate_email(self, key, email):
-        """Valide que l'email n'est pas vide et a un format basique."""
+        """Valide que l'email n'est pas vide et a un format valide."""
         if not email or not email.strip():
             raise ValueError("L'email ne peut pas être vide")
         email = email.strip().lower()
-        if '@' not in email or '.' not in email.split('@')[-1]:
-            raise ValueError("Format d'email invalide")
+        
+        # Utiliser email-validator pour une validation stricte
+        try:
+            validation = validate_email_format(email, check_deliverability=False)
+            email = validation.normalized
+        except EmailNotValidError as e:
+            raise ValueError(f"Format d'email invalide: {str(e)}")
+        
         if len(email) > 120:
             raise ValueError("L'email ne peut pas dépasser 120 caractères")
         return email

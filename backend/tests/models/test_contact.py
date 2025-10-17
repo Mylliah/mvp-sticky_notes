@@ -120,20 +120,26 @@ class TestContactModel:
             assert contact.id is not None
 
     @pytest.mark.unit
-    def test_duplicate_contact_allowed_or_not(self, app):
-        """Deux contacts identiques entre les mêmes users (selon modèle)."""
+    def test_duplicate_contact_not_allowed(self, app):
+        """Deux contacts identiques entre les mêmes users ne sont pas autorisés (contrainte UNIQUE)."""
         with app.app_context():
             owner = self._create_user("dupowner")
             friend = self._create_user("dupfriend")
 
             c1 = Contact(user_id=owner.id, contact_user_id=friend.id, nickname="First")
-            c2 = Contact(user_id=owner.id, contact_user_id=friend.id, nickname="Second")
-            db.session.add_all([c1, c2])
+            db.session.add(c1)
             db.session.commit()
 
-            # Le modèle n'impose pas de contrainte unique -> les deux sont créés
-            contacts = Contact.query.filter_by(user_id=owner.id).all()
-            assert len(contacts) == 2
+            # Essayer d'ajouter un doublon
+            c2 = Contact(user_id=owner.id, contact_user_id=friend.id, nickname="Second")
+            db.session.add(c2)
+            
+            # Devrait lever une IntegrityError
+            from sqlalchemy.exc import IntegrityError
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            
+            db.session.rollback()
 
     # === REPRESENTATION ET SERIALISATION ===
 

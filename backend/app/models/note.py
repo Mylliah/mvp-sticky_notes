@@ -16,12 +16,15 @@ class Note(db.Model):
     created_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     update_date = db.Column(db.DateTime)
     delete_date = db.Column(db.DateTime)
+    deleted_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # QUI a supprimé (créateur ou destinataire)
     read_date = db.Column(db.DateTime)
+    finished_date = db.Column(db.DateTime)
     status = db.Column(db.String(50), nullable=False, default="en_cours")
     important = db.Column(db.Boolean, default=False)
 
-    # Relations
-    creator = db.relationship('User', backref=db.backref('notes', lazy=True))
+    # Relations (foreign_keys spécifié explicitement car 2 FK vers User: creator_id et deleted_by)
+    creator = db.relationship('User', foreign_keys=[creator_id], backref='created_notes')
+    deleter = db.relationship('User', foreign_keys=[deleted_by], backref='deleted_notes')
     assignments = db.relationship('Assignment', back_populates='note', lazy=True)
 
     def __repr__(self):
@@ -39,11 +42,12 @@ class Note(db.Model):
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
             "read_date": self.read_date.isoformat() if self.read_date else None,
+            "finished_date": self.finished_date.isoformat() if self.finished_date else None,
             "creator_id": self.creator_id,
         }
 
     def to_details_dict(self, assignment=None):
-        """Conversion pour le bloc détails"""
+        """Conversion pour le bloc détails (inclut deleted_by pour traçabilité)"""
         return {
             "id": self.id,
             "assigned_to": assignment.user_id if assignment else None,
@@ -53,8 +57,9 @@ class Note(db.Model):
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
+            "deleted_by": self.deleted_by,  # Traçabilité : QUI a supprimé (créateur ou destinataire)
             "read_date": self.read_date.isoformat() if self.read_date else None,
-            "finished_date": self.finished_date.isoformat() if hasattr(self, "finished_date") and self.finished_date else None,
+            "finished_date": self.finished_date.isoformat() if self.finished_date else None,
         }
 
     def to_summary_dict(self, current_user_id=None):

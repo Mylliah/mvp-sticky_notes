@@ -9,6 +9,9 @@ class Contact(db.Model):
     Gestion du carnet de contacts d'un utilisateur.
     """
     __tablename__ = "contacts"
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'contact_user_id', name='uq_user_contact'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)            # propriétaire du carnet

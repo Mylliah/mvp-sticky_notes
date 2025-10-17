@@ -283,34 +283,8 @@ class TestActionLogsRoutes:
             
             assert response.status_code == 404
 
-    # === DELETE /action_logs/<id> - Supprimer un log ===
-
-    @pytest.mark.integration
-    def test_delete_action_log_success(self, client, app, user, auth_token):
-        """Supprimer un log avec succès."""
-        headers = {'Authorization': f'Bearer {auth_token}'}
-        log_id = create_action_log(app, user.id, 'CREATE')
-        
-        with app.app_context():
-            response = client.delete(f'/v1/action_logs/{log_id}', headers=headers)
-            
-            assert response.status_code == 200
-            data = response.get_json()
-            assert data['deleted'] is True
-            
-            # Vérifier que le log a été supprimé
-            deleted = ActionLog.query.get(log_id)
-            assert deleted is None
-
-    @pytest.mark.integration
-    def test_delete_action_log_not_found(self, client, app, auth_token):
-        """Supprimer un log inexistant retourne 404."""
-        headers = {'Authorization': f'Bearer {auth_token}'}
-        
-        with app.app_context():
-            response = client.delete('/v1/action_logs/99999', headers=headers)
-            
-            assert response.status_code == 404
+    # NOTE: Tests de suppression des logs supprimés car route DELETE /action_logs/<id>
+    # a été retirée volontairement pour garantir l'immuabilité des logs (traçabilité)
 
     # === GET /action_logs/stats - Récupérer les statistiques ===
 

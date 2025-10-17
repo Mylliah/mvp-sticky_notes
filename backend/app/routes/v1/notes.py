@@ -189,14 +189,26 @@ def update_note(note_id):
 @bp.delete('/notes/<int:note_id>')
 @jwt_required()
 def delete_note(note_id):
-    """Soft delete : pose la date de suppression, conserve la note pour audit (authentifié)."""
+    """
+    Soft delete : pose la date de suppression et enregistre qui a supprimé.
+    Autorisé pour le créateur OU le destinataire de la note (traçabilité complète).
+    """
     note = Note.query.get_or_404(note_id)
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est bien le créateur
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can delete this note")
+    # Vérifier que l'utilisateur est créateur OU destinataire
+    is_creator = note.creator_id == current_user_id
+    is_recipient = Assignment.query.filter_by(
+        note_id=note_id,
+        user_id=current_user_id
+    ).first() is not None
     
+    if not is_creator and not is_recipient:
+        abort(403, description="Only the creator or recipient can delete this note")
+    
+    # Soft delete avec traçabilité de QUI a supprimé
     note.delete_date = datetime.now(timezone.utc)
+    note.deleted_by = current_user_id
     db.session.commit()
+    
     return note.to_dict()

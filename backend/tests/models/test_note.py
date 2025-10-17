@@ -94,7 +94,7 @@ class TestNoteModel:
             db.session.add(note)
             db.session.commit()
             assert note.creator == user
-            assert note in user.notes
+            assert note in user.created_notes  # Backref changé de 'notes' à 'created_notes'
 
     @pytest.mark.unit
     def test_note_assignments_relationship(self, app):
