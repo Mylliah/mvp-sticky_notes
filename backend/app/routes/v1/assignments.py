@@ -90,3 +90,35 @@ def delete_assignment(assignment_id):
     db.session.delete(assignment)
     db.session.commit()
     return {"deleted": True}
+
+@bp.put('/assignments/<int:assignment_id>/priority')
+@jwt_required()
+def toggle_priority(assignment_id):
+    """Basculer la priorité personnelle du destinataire (authentification requise)."""
+    current_user_id = get_jwt_identity()
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # Vérifier que l'utilisateur connecté est bien le destinataire
+    if assignment.user_id != current_user_id:
+        abort(403, description="You can only toggle priority on your own assignments")
+    
+    # Basculer la priorité
+    assignment.recipient_priority = not assignment.recipient_priority
+    db.session.commit()
+    return assignment.to_dict()
+
+@bp.get('/assignments/unread')
+@jwt_required()
+def get_unread_assignments():
+    """Récupérer les assignations non lues de l'utilisateur connecté (authentification requise)."""
+    current_user_id = get_jwt_identity()
+    
+    unread_assignments = Assignment.query.filter_by(
+        user_id=current_user_id,
+        is_read=False
+    ).order_by(Assignment.assigned_date.desc()).all()
+    
+    return {
+        "count": len(unread_assignments),
+        "assignments": [a.to_dict() for a in unread_assignments]
+    }

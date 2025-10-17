@@ -37,17 +37,64 @@ def get_notes():
     Get all notes with their assignments
     ---
     Returns list of notes created by OR assigned to current user
+    Query Parameters:
+      - filter: 'important', 'important_by_me', 'unread', 'received', 'sent'
+      - sort: 'date_asc', 'date_desc', 'important_first'
     """
     current_user_id = get_jwt_identity()
-    # Récupérer les notes créées par l'utilisateur OU qui lui sont assignées
-    notes = Note.query.join(
+    
+    # Query de base
+    query = Note.query.join(
         Assignment, Note.id == Assignment.note_id, isouter=True
     ).filter(
         or_(
             Note.creator_id == current_user_id,
             Assignment.user_id == current_user_id
         )
-    ).distinct().order_by(Note.id.asc()).all()
+    )
+    
+    # Filtres
+    filter_param = request.args.get('filter')
+    if filter_param:
+        if filter_param == 'important':
+            # Notes marquées importantes par le créateur
+            query = query.filter(Note.important == True)
+        elif filter_param == 'important_by_me':
+            # Notes marquées prioritaires par le destinataire
+            query = query.filter(
+                Assignment.user_id == current_user_id,
+                Assignment.recipient_priority == True
+            )
+        elif filter_param == 'unread':
+            # Assignations non lues
+            query = query.filter(
+                Assignment.user_id == current_user_id,
+                Assignment.is_read == False
+            )
+        elif filter_param == 'received':
+            # Notes assignées à l'utilisateur (pas créées par lui)
+            query = query.filter(
+                Assignment.user_id == current_user_id,
+                Note.creator_id != current_user_id
+            )
+        elif filter_param == 'sent':
+            # Notes créées par l'utilisateur
+            query = query.filter(Note.creator_id == current_user_id)
+    
+    # Tri
+    sort_param = request.args.get('sort', 'date_desc')
+    if sort_param == 'date_asc':
+        query = query.order_by(Note.creation_date.asc())
+    elif sort_param == 'date_desc':
+        query = query.order_by(Note.creation_date.desc())
+    elif sort_param == 'important_first':
+        # Important d'abord, puis par date décroissante
+        query = query.order_by(Note.important.desc(), Note.creation_date.desc())
+    else:
+        # Par défaut : date décroissante
+        query = query.order_by(Note.creation_date.desc())
+    
+    notes = query.distinct().all()
     return [note.to_dict() for note in notes], 200
 
 
