@@ -73,6 +73,13 @@ def list_assignments():
 def get_assignment(assignment_id):
     """Récupérer une assignation par son ID."""
     assignment = Assignment.query.get_or_404(assignment_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est soit le créateur de la note, soit le destinataire
+    note = db.session.get(Note, assignment.note_id)
+    if note.creator_id != current_user_id and assignment.user_id != current_user_id:
+        abort(403, description="You can only view your own assignments")
+    
     return assignment.to_dict()
 
 @bp.put('/assignments/<int:assignment_id>')
@@ -80,9 +87,21 @@ def get_assignment(assignment_id):
 def update_assignment(assignment_id):
     """Mettre à jour une assignation (authentification requise)."""
     assignment = Assignment.query.get_or_404(assignment_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est soit le créateur de la note, soit le destinataire
+    note = db.session.get(Note, assignment.note_id)
+    if note.creator_id != current_user_id and assignment.user_id != current_user_id:
+        abort(403, description="You can only update your own assignments")
+    
+    # Le destinataire ne peut modifier que is_read, pas user_id
     data = request.get_json()
     
     if "user_id" in data:
+        # Seul le créateur peut changer le destinataire
+        if note.creator_id != current_user_id:
+            abort(403, description="Only the creator can change the assignment recipient")
+        
         # Vérifier que le nouvel utilisateur existe
         user = db.session.get(User, data["user_id"])
         if not user:
@@ -107,6 +126,13 @@ def update_assignment(assignment_id):
 def delete_assignment(assignment_id):
     """Supprimer une assignation (authentification requise)."""
     assignment = Assignment.query.get_or_404(assignment_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Seul le créateur de la note peut supprimer une assignation
+    note = db.session.get(Note, assignment.note_id)
+    if note.creator_id != current_user_id:
+        abort(403, description="Only the creator can delete assignments")
+    
     db.session.delete(assignment)
     db.session.commit()
     return {"deleted": True}

@@ -74,6 +74,12 @@ def list_action_logs():
 def get_action_log(log_id):
     """Récupérer un log d'action par son ID (authentification requise)."""
     action_log = ActionLog.query.get_or_404(log_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le propriétaire du log
+    if action_log.user_id != current_user_id:
+        abort(403, description="You can only view your own action logs")
+    
     return action_log.to_dict()
 
 @bp.delete('/action_logs/<int:log_id>')
@@ -81,6 +87,12 @@ def get_action_log(log_id):
 def delete_action_log(log_id):
     """Supprimer un log d'action (authentification requise)."""
     action_log = ActionLog.query.get_or_404(log_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le propriétaire du log
+    if action_log.user_id != current_user_id:
+        abort(403, description="You can only delete your own action logs")
+    
     db.session.delete(action_log)
     db.session.commit()
     return {"deleted": True}

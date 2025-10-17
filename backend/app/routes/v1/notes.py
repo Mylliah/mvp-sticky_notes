@@ -167,6 +167,12 @@ def get_note_assignments(note_id):
 def update_note(note_id):
     """Mettre à jour une note (authentifié)."""
     note = Note.query.get_or_404(note_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le créateur
+    if note.creator_id != current_user_id:
+        abort(403, description="Only the creator can update this note")
+    
     data = request.get_json()
     if not data or "content" not in data:
         abort(400, description="Missing content")
@@ -185,6 +191,12 @@ def update_note(note_id):
 def delete_note(note_id):
     """Soft delete : pose la date de suppression, conserve la note pour audit (authentifié)."""
     note = Note.query.get_or_404(note_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le créateur
+    if note.creator_id != current_user_id:
+        abort(403, description="Only the creator can delete this note")
+    
     note.delete_date = datetime.now(timezone.utc)
     db.session.commit()
     return note.to_dict()
