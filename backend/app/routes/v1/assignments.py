@@ -95,7 +95,7 @@ def delete_assignment(assignment_id):
 @jwt_required()
 def toggle_priority(assignment_id):
     """Basculer la priorité personnelle du destinataire (authentification requise)."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     assignment = Assignment.query.get_or_404(assignment_id)
     
     # Vérifier que l'utilisateur connecté est bien le destinataire
@@ -111,7 +111,7 @@ def toggle_priority(assignment_id):
 @jwt_required()
 def get_unread_assignments():
     """Récupérer les assignations non lues de l'utilisateur connecté (authentification requise)."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     
     unread_assignments = Assignment.query.filter_by(
         user_id=current_user_id,
