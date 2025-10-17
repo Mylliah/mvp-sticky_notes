@@ -10,6 +10,9 @@ class Assignment(db.Model):
     suivi de la date et du statut de lecture.
     """
     __tablename__ = "assignments"
+    __table_args__ = (
+        db.UniqueConstraint('note_id', 'user_id', name='uq_note_user'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=False)

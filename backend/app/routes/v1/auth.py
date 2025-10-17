@@ -4,6 +4,7 @@ Blueprint pour l'authentification.
 from flask import Blueprint, request, abort
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash, check_password_hash
+from email_validator import validate_email, EmailNotValidError
 from ... import db, limiter
 from ...models import User
 
@@ -23,6 +24,13 @@ def register():
 
     if not username or not email or not password:
         abort(400, description="Missing username, email or password")
+
+    # Valider le format de l'email
+    try:
+        validation = validate_email(email, check_deliverability=False)
+        email = validation.normalized
+    except EmailNotValidError as e:
+        abort(400, description=f"Invalid email format: {str(e)}")
 
     # Vérifie si username ou email existe déjà
     if User.query.filter((User.username==username) | (User.email==email)).first():
