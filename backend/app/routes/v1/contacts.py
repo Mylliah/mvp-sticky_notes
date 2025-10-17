@@ -119,12 +119,14 @@ def list_assignable_users():
     return assignable
 
 @bp.get('/contacts/<int:contact_id>')
+@jwt_required()
 def get_contact(contact_id):
     """Récupérer un contact par son ID."""
     contact = Contact.query.get_or_404(contact_id)
     return contact.to_dict()
 
 @bp.put('/contacts/<int:contact_id>')
+@jwt_required()
 def update_contact(contact_id):
     """Mettre à jour un contact."""
     contact = Contact.query.get_or_404(contact_id)
@@ -140,6 +142,7 @@ def update_contact(contact_id):
     return contact.to_dict()
 
 @bp.delete('/contacts/<int:contact_id>')
+@jwt_required()
 def delete_contact(contact_id):
     """Supprimer un contact."""
     contact = Contact.query.get_or_404(contact_id)
