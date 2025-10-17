@@ -16,6 +16,7 @@ class Assignment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     assigned_date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
+    recipient_priority = db.Column(db.Boolean, default=False)
 
     # Relations 
     user = db.relationship('User', backref=db.backref('assignments', lazy=True)) 
@@ -31,4 +32,5 @@ class Assignment(db.Model):
             "user_id": self.user_id,
             "assigned_date": self.assigned_date.isoformat() if self.assigned_date else None,
             "is_read": self.is_read,
+            "recipient_priority": self.recipient_priority,
         }

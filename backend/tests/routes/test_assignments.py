@@ -348,3 +348,138 @@ class TestAssignmentsRoutes:
             response = client.delete('/v1/assignments/99999', headers=headers)
             
             assert response.status_code == 404
+
+    # === PUT /assignments/<id>/priority - Toggle priority ===
+
+    @pytest.mark.integration
+    def test_toggle_priority_success(self, client, app, user, auth_token, note):
+        """Basculer la priorité du destinataire avec succès."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            assignment = Assignment(note_id=note.id, user_id=user.id, recipient_priority=False)
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            # Basculer de False à True
+            response = client.put(f'/v1/assignments/{assignment_id}/priority', headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['recipient_priority'] is True
+            
+            # Basculer de True à False
+            response = client.put(f'/v1/assignments/{assignment_id}/priority', headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['recipient_priority'] is False
+
+    @pytest.mark.integration
+    def test_toggle_priority_forbidden_not_recipient(self, client, app, user, auth_token, note):
+        """Un utilisateur ne peut pas basculer la priorité d'une assignation qui ne lui appartient pas."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            # Créer un autre utilisateur
+            other_user = User(
+                username='otheruser',
+                email='other@test.com',
+                password_hash=generate_password_hash('password')
+            )
+            db.session.add(other_user)
+            db.session.commit()
+            
+            # Créer une assignation pour l'autre utilisateur
+            assignment = Assignment(note_id=note.id, user_id=other_user.id)
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            # Essayer de basculer la priorité
+            response = client.put(f'/v1/assignments/{assignment_id}/priority', headers=headers)
+            
+            assert response.status_code == 403
+            assert 'only toggle priority on your own assignments' in response.get_json()['message']
+
+    @pytest.mark.integration
+    def test_toggle_priority_not_found(self, client, app, auth_token):
+        """Basculer la priorité d'une assignation inexistante retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            response = client.put('/v1/assignments/99999/priority', headers=headers)
+            
+            assert response.status_code == 404
+
+    # === GET /assignments/unread - Récupérer assignations non lues ===
+
+    @pytest.mark.integration
+    def test_get_unread_assignments_empty(self, client, app, auth_token):
+        """Récupérer les assignations non lues quand il n'y en a pas."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            response = client.get('/v1/assignments/unread', headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['count'] == 0
+            assert len(data['assignments']) == 0
+
+    @pytest.mark.integration
+    def test_get_unread_assignments_with_unread(self, client, app, user, auth_token, note):
+        """Récupérer les assignations non lues."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            # Créer plusieurs notes et assignations
+            note2 = Note(content='Note 2', creator_id=user.id)
+            note3 = Note(content='Note 3', creator_id=user.id)
+            db.session.add_all([note2, note3])
+            db.session.commit()
+            
+            # Créer des assignations : 2 non lues, 1 lue
+            assignment1 = Assignment(note_id=note.id, user_id=user.id, is_read=False)
+            assignment2 = Assignment(note_id=note2.id, user_id=user.id, is_read=False)
+            assignment3 = Assignment(note_id=note3.id, user_id=user.id, is_read=True)
+            db.session.add_all([assignment1, assignment2, assignment3])
+            db.session.commit()
+            
+            response = client.get('/v1/assignments/unread', headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['count'] == 2
+            assert len(data['assignments']) == 2
+            assert all(a['is_read'] is False for a in data['assignments'])
+
+    @pytest.mark.integration
+    def test_get_unread_assignments_isolation(self, client, app, user, auth_token, note):
+        """Les assignations non lues sont isolées par utilisateur."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            # Créer un autre utilisateur
+            other_user = User(
+                username='otheruser',
+                email='other@test.com',
+                password_hash=generate_password_hash('password')
+            )
+            db.session.add(other_user)
+            db.session.commit()
+            
+            # Créer des assignations pour les deux utilisateurs
+            assignment1 = Assignment(note_id=note.id, user_id=user.id, is_read=False)
+            assignment2 = Assignment(note_id=note.id, user_id=other_user.id, is_read=False)
+            db.session.add_all([assignment1, assignment2])
+            db.session.commit()
+            
+            response = client.get('/v1/assignments/unread', headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            # L'utilisateur connecté ne voit que sa propre assignation
+            assert data['count'] == 1
+            assert data['assignments'][0]['user_id'] == user.id

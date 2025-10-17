@@ -139,9 +139,10 @@ class TestNotesRoutes:
             assert response.status_code == 200
             data = response.get_json()
             assert len(data) == 2
-            assert data[0]['content'] == 'Note 1'
-            assert data[1]['content'] == 'Note 2'
-            assert data[1]['important'] is True
+            # Les notes sont maintenant triées par date décroissante (plus récente en premier)
+            assert data[0]['content'] == 'Note 2'
+            assert data[1]['content'] == 'Note 1'
+            assert data[0]['important'] is True
 
     @pytest.mark.integration
     def test_list_notes_requires_auth(self, client, app):
@@ -368,3 +369,318 @@ class TestNotesRoutes:
             response = client.delete('/v1/notes/1')
             
             assert response.status_code == 401
+
+    # === GET /notes avec filtres et tri ===
+
+    @pytest.mark.integration
+    def test_list_notes_filter_important(self, client, app):
+        """Filtrer les notes marquées importantes par le créateur."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note1 = Note(content='Important note', creator_id=user_id, important=True)
+            note2 = Note(content='Normal note', creator_id=user_id, important=False)
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            response = client.get('/v1/notes?filter=important',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 1
+            assert data[0]['content'] == 'Important note'
+            assert data[0]['important'] is True
+
+    @pytest.mark.integration
+    def test_list_notes_filter_important_by_me(self, client, app):
+        """Filtrer les notes marquées prioritaires par le destinataire."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note1 = Note(content='Priority note', creator_id=user_id)
+            note2 = Note(content='Normal note', creator_id=user_id)
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            # Créer des assignations
+            from app.models import Assignment
+            assignment1 = Assignment(note_id=note1.id, user_id=user_id, recipient_priority=True)
+            assignment2 = Assignment(note_id=note2.id, user_id=user_id, recipient_priority=False)
+            db.session.add_all([assignment1, assignment2])
+            db.session.commit()
+            
+            response = client.get('/v1/notes?filter=important_by_me',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 1
+            assert data[0]['content'] == 'Priority note'
+
+    @pytest.mark.integration
+    def test_list_notes_filter_unread(self, client, app):
+        """Filtrer les notes non lues."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note1 = Note(content='Unread note', creator_id=user_id)
+            note2 = Note(content='Read note', creator_id=user_id)
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            # Créer des assignations
+            from app.models import Assignment
+            assignment1 = Assignment(note_id=note1.id, user_id=user_id, is_read=False)
+            assignment2 = Assignment(note_id=note2.id, user_id=user_id, is_read=True)
+            db.session.add_all([assignment1, assignment2])
+            db.session.commit()
+            
+            response = client.get('/v1/notes?filter=unread',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 1
+            assert data[0]['content'] == 'Unread note'
+
+    @pytest.mark.integration
+    def test_list_notes_filter_received(self, client, app):
+        """Filtrer les notes reçues (assignées mais pas créées par l'utilisateur)."""
+        token1, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer un deuxième utilisateur
+            from werkzeug.security import generate_password_hash
+            user2 = User(
+                username='user2',
+                email='user2@test.com',
+                password_hash=generate_password_hash('pass')
+            )
+            db.session.add(user2)
+            db.session.commit()
+            user2_id = user2.id
+            
+            # Créer des notes
+            note1 = Note(content='Received note', creator_id=user2_id)  # Créée par user2
+            note2 = Note(content='Sent note', creator_id=user1_id)  # Créée par user1
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            # Assigner note1 à user1 (reçue)
+            from app.models import Assignment
+            assignment = Assignment(note_id=note1.id, user_id=user1_id)
+            db.session.add(assignment)
+            db.session.commit()
+            
+            response = client.get('/v1/notes?filter=received',
+                headers={'Authorization': f'Bearer {token1}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 1
+            assert data[0]['content'] == 'Received note'
+
+    @pytest.mark.integration
+    def test_list_notes_filter_sent(self, client, app):
+        """Filtrer les notes envoyées (créées par l'utilisateur)."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer un deuxième utilisateur
+            from werkzeug.security import generate_password_hash
+            user2 = User(
+                username='user2',
+                email='user2@test.com',
+                password_hash=generate_password_hash('pass')
+            )
+            db.session.add(user2)
+            db.session.commit()
+            
+            # Créer des notes
+            note1 = Note(content='Sent note', creator_id=user_id)  # Créée par user1
+            note2 = Note(content='Received note', creator_id=user2.id)  # Créée par user2
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            # Assigner note2 à user1
+            from app.models import Assignment
+            assignment = Assignment(note_id=note2.id, user_id=user_id)
+            db.session.add(assignment)
+            db.session.commit()
+            
+            response = client.get('/v1/notes?filter=sent',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 1
+            assert data[0]['content'] == 'Sent note'
+
+    @pytest.mark.integration
+    def test_list_notes_sort_date_asc(self, client, app):
+        """Trier les notes par date croissante."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note1 = Note(content='Old note', creator_id=user_id)
+            note2 = Note(content='New note', creator_id=user_id)
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            response = client.get('/v1/notes?sort=date_asc',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 2
+            assert data[0]['content'] == 'Old note'
+            assert data[1]['content'] == 'New note'
+
+    @pytest.mark.integration
+    def test_list_notes_sort_important_first(self, client, app):
+        """Trier les notes avec les importantes en premier."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note1 = Note(content='Normal note', creator_id=user_id, important=False)
+            note2 = Note(content='Important note', creator_id=user_id, important=True)
+            note3 = Note(content='Another normal', creator_id=user_id, important=False)
+            db.session.add_all([note1, note2, note3])
+            db.session.commit()
+            
+            response = client.get('/v1/notes?sort=important_first',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data) == 3
+            assert data[0]['content'] == 'Important note'
+            assert data[0]['important'] is True
+
+    # === GET /notes/<id>/assignments - Vue créateur sur les destinataires ===
+
+    @pytest.mark.integration
+    def test_get_note_assignments_as_creator(self, client, app):
+        """Le créateur peut voir tous les destinataires et leurs statuts."""
+        token, creator_id = create_user_and_login(client, app, 'creator', 'creator@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer des destinataires
+            user1 = User(username='user1', email='user1@test.com', password_hash=generate_password_hash('pass'))
+            user2 = User(username='user2', email='user2@test.com', password_hash=generate_password_hash('pass'))
+            user3 = User(username='user3', email='user3@test.com', password_hash=generate_password_hash('pass'))
+            db.session.add_all([user1, user2, user3])
+            db.session.commit()
+            
+            # Créer une note
+            note = Note(content='Test note', creator_id=creator_id)
+            db.session.add(note)
+            db.session.commit()
+            note_id = note.id
+            
+            # Créer des assignations avec différents statuts
+            assignment1 = Assignment(note_id=note_id, user_id=user1.id, is_read=True)
+            assignment2 = Assignment(note_id=note_id, user_id=user2.id, is_read=False)
+            assignment3 = Assignment(note_id=note_id, user_id=user3.id, is_read=True, recipient_priority=True)
+            db.session.add_all([assignment1, assignment2, assignment3])
+            db.session.commit()
+            
+            response = client.get(f'/v1/notes/{note_id}/assignments',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            # Vérifier la structure
+            assert data['note_id'] == note_id
+            assert data['creator_id'] == creator_id
+            assert data['total_recipients'] == 3
+            assert data['read_count'] == 2  # user1 et user3 ont lu
+            
+            # Vérifier les assignations
+            assert len(data['assignments']) == 3
+            
+            # Vérifier les détails
+            usernames = [a['username'] for a in data['assignments']]
+            assert 'user1' in usernames
+            assert 'user2' in usernames
+            assert 'user3' in usernames
+            
+            # Vérifier les statuts is_read
+            read_statuses = {a['username']: a['is_read'] for a in data['assignments']}
+            assert read_statuses['user1'] is True
+            assert read_statuses['user2'] is False
+            assert read_statuses['user3'] is True
+            
+            # Vérifier que recipient_priority n'est PAS exposé (privé)
+            for assignment in data['assignments']:
+                assert 'recipient_priority' not in assignment
+
+    @pytest.mark.integration
+    def test_get_note_assignments_forbidden_not_creator(self, client, app):
+        """Un destinataire ne peut pas voir les autres destinataires."""
+        token_creator, creator_id = create_user_and_login(client, app, 'creator', 'creator@test.com', 'pass')
+        token_user, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer une note
+            note = Note(content='Test note', creator_id=creator_id)
+            db.session.add(note)
+            db.session.commit()
+            note_id = note.id
+            
+            # Assigner à user1
+            assignment = Assignment(note_id=note_id, user_id=user_id)
+            db.session.add(assignment)
+            db.session.commit()
+            
+            # user1 essaie d'accéder aux assignations
+            response = client.get(f'/v1/notes/{note_id}/assignments',
+                headers={'Authorization': f'Bearer {token_user}'}
+            )
+            
+            assert response.status_code == 403
+            assert 'Only the creator can view all assignments' in get_error_message(response)
+
+    @pytest.mark.integration
+    def test_get_note_assignments_not_found(self, client, app):
+        """Erreur 404 si la note n'existe pas."""
+        token, _ = create_user_and_login(client, app, 'creator', 'creator@test.com', 'pass')
+        
+        with app.app_context():
+            response = client.get('/v1/notes/99999/assignments',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_get_note_assignments_empty(self, client, app):
+        """Le créateur peut voir une note sans destinataires."""
+        token, creator_id = create_user_and_login(client, app, 'creator', 'creator@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer une note sans assignation
+            note = Note(content='Test note', creator_id=creator_id)
+            db.session.add(note)
+            db.session.commit()
+            note_id = note.id
+            
+            response = client.get(f'/v1/notes/{note_id}/assignments',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['total_recipients'] == 0
+            assert data['read_count'] == 0
+            assert len(data['assignments']) == 0
