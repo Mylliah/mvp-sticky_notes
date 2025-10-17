@@ -67,6 +67,23 @@ class TestNoteCollaborationWorkflows:
             )
             assert response.status_code == 201
             
+            # Bob se connecte et ajoute Alice (réciprocité requise)
+            response = client.post('/v1/auth/login', json={
+                'username': 'bob',
+                'password': 'BobPass456!'
+            })
+            assert response.status_code == 200
+            token_bob_temp = response.get_json()['access_token']
+            
+            response = client.post('/v1/contacts',
+                headers={'Authorization': f'Bearer {token_bob_temp}'},
+                json={
+                    'contact_username': 'alice',
+                    'nickname': 'Alice la PM'
+                }
+            )
+            assert response.status_code == 201
+            
             # Vérifier que Bob apparaît dans les contacts d'Alice
             response = client.get('/v1/contacts',
                 headers={'Authorization': f'Bearer {token_alice}'}
@@ -76,6 +93,7 @@ class TestNoteCollaborationWorkflows:
             assert len(contacts) == 2
             bob_contact = [c for c in contacts if not c.get('is_self')][0]
             assert bob_contact['nickname'] == 'Bob le Dev'
+            assert bob_contact['is_mutual'] is True  # Maintenant mutuel
             
             # === Phase 3: Création et assignation de note ===
             
@@ -272,6 +290,7 @@ class TestNoteCollaborationWorkflows:
             
             # Créer 3 membres d'équipe
             team_members = []
+            team_tokens = []
             for i in range(1, 4):
                 response = client.post('/v1/auth/register', json={
                     'username': f'member{i}',
@@ -281,12 +300,29 @@ class TestNoteCollaborationWorkflows:
                 member_id = response.get_json()['id']
                 team_members.append(member_id)
                 
+                # Login du membre
+                response = client.post('/v1/auth/login', json={
+                    'username': f'member{i}',
+                    'password': f'Member{i}Pass!'
+                })
+                member_token = response.get_json()['access_token']
+                team_tokens.append(member_token)
+                
                 # Manager ajoute chaque membre comme contact
                 client.post('/v1/contacts',
                     headers={'Authorization': f'Bearer {token_manager}'},
                     json={
-                        'user_id': member_id,
+                        'contact_username': f'member{i}',
                         'nickname': f'Member {i}'
+                    }
+                )
+                
+                # Chaque membre ajoute le manager (réciprocité)
+                client.post('/v1/contacts',
+                    headers={'Authorization': f'Bearer {member_token}'},
+                    json={
+                        'contact_username': 'manager',
+                        'nickname': 'Le Manager'
                     }
                 )
             
@@ -561,9 +597,23 @@ class TestErrorHandlingWorkflows:
             })
             contact_id = response.get_json()['id']
             
+            # Login contact1
+            response = client.post('/v1/auth/login', json={
+                'username': 'contact1',
+                'password': 'Contact1Pass!'
+            })
+            token_contact1 = response.get_json()['access_token']
+            
             response = client.post('/v1/contacts',
                 headers={'Authorization': f'Bearer {token}'},
                 json={'contact_username': 'contact1', 'nickname': 'Contact'}
+            )
+            assert response.status_code == 201
+            
+            # contact1 ajoute testuser (réciprocité)
+            response = client.post('/v1/contacts',
+                headers={'Authorization': f'Bearer {token_contact1}'},
+                json={'contact_username': 'testuser', 'nickname': 'TestUser'}
             )
             assert response.status_code == 201
             

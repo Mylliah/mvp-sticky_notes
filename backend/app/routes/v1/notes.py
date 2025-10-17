@@ -102,7 +102,20 @@ def get_notes():
 @jwt_required()
 def get_note(note_id):
     """Récupérer une note par son ID (affichage complet)."""
+    current_user_id = int(get_jwt_identity())
     note = Note.query.get_or_404(note_id)
+    
+    # Auto-marquer comme lu si c'est une assignation non lue
+    assignment = Assignment.query.filter_by(
+        note_id=note_id,
+        user_id=current_user_id
+    ).first()
+    
+    if assignment and not assignment.is_read:
+        assignment.is_read = True
+        note.read_date = datetime.now(timezone.utc)
+        db.session.commit()
+    
     return note.to_dict()
 
 

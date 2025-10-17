@@ -78,6 +78,7 @@ def list_contacts():
         contact_dict["username"] = contact.contact_user.username
         contact_dict["email"] = contact.contact_user.email
         contact_dict["is_self"] = False
+        # is_mutual est déjà dans contact.to_dict()
         result.append(contact_dict)
     
     return result
@@ -113,7 +114,8 @@ def list_assignable_users():
             "username": contact.contact_user.username,
             "email": contact.contact_user.email,
             "nickname": contact.nickname,
-            "is_self": False
+            "is_self": False,
+            "is_mutual": contact.is_mutual()
         })
     
     return assignable
