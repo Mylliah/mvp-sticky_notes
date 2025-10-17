@@ -24,6 +24,14 @@ class Contact(db.Model):
     def __repr__(self):
         return f"<Contact id={self.id} nickname={self.nickname!r}>"
 
+    def is_mutual(self):
+        """Vérifie si le contact est réciproque (l'autre personne m'a aussi ajouté)."""
+        mutual = Contact.query.filter_by(
+            user_id=self.contact_user_id,  # L'autre personne
+            contact_user_id=self.user_id   # M'a ajouté aussi
+        ).first()
+        return mutual is not None
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -32,4 +40,5 @@ class Contact(db.Model):
             "nickname": self.nickname,
             "contact_action": self.contact_action,
             "created_date": self.created_date.isoformat() if self.created_date else None,
+            "is_mutual": self.is_mutual(),
         }

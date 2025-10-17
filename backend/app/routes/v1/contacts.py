@@ -78,6 +78,7 @@ def list_contacts():
         contact_dict["username"] = contact.contact_user.username
         contact_dict["email"] = contact.contact_user.email
         contact_dict["is_self"] = False
+        # is_mutual est déjà dans contact.to_dict()
         result.append(contact_dict)
     
     return result
@@ -113,7 +114,8 @@ def list_assignable_users():
             "username": contact.contact_user.username,
             "email": contact.contact_user.email,
             "nickname": contact.nickname,
-            "is_self": False
+            "is_self": False,
+            "is_mutual": contact.is_mutual()
         })
     
     return assignable
@@ -123,6 +125,12 @@ def list_assignable_users():
 def get_contact(contact_id):
     """Récupérer un contact par son ID."""
     contact = Contact.query.get_or_404(contact_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le propriétaire du contact
+    if contact.user_id != current_user_id:
+        abort(403, description="You can only view your own contacts")
+    
     return contact.to_dict()
 
 @bp.put('/contacts/<int:contact_id>')
@@ -130,6 +138,12 @@ def get_contact(contact_id):
 def update_contact(contact_id):
     """Mettre à jour un contact."""
     contact = Contact.query.get_or_404(contact_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le propriétaire du contact
+    if contact.user_id != current_user_id:
+        abort(403, description="You can only update your own contacts")
+    
     data = request.get_json()
     
     if "nickname" in data:
@@ -146,6 +160,12 @@ def update_contact(contact_id):
 def delete_contact(contact_id):
     """Supprimer un contact."""
     contact = Contact.query.get_or_404(contact_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est bien le propriétaire du contact
+    if contact.user_id != current_user_id:
+        abort(403, description="You can only delete your own contacts")
+    
     db.session.delete(contact)
     db.session.commit()
     return {"deleted": True}

@@ -4,13 +4,14 @@ Blueprint pour l'authentification.
 from flask import Blueprint, request, abort
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash, check_password_hash
-from ... import db
+from ... import db, limiter
 from ...models import User
 
 bp = Blueprint('auth', __name__)
 
 
 @bp.post('/auth/register')
+@limiter.limit("3 per minute")
 def register():
     """
     Endpoint pour créer un nouvel utilisateur.
@@ -45,6 +46,7 @@ def register():
 
 
 @bp.post('/auth/login')
+@limiter.limit("5 per minute")
 def login():
     """
     Endpoint pour authentifier l'utilisateur et générer un JWT.

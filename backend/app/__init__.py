@@ -7,11 +7,19 @@ from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_cors import CORS
 from sqlalchemy import event
 
 db = SQLAlchemy()
 migrate = Migrate()
-jwt = JWTManager() # on instancie et on lie à l'app plus bas 
+jwt = JWTManager() # on instancie et on lie à l'app plus bas
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+) 
 
 def create_app(test_config=None):
     """
@@ -47,10 +55,29 @@ def create_app(test_config=None):
     if test_config is not None:
         app.config.update(test_config)
 
+    app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"connect_args": {"check_same_thread": False}})
+
     # Initialisation des extensions
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app) # intégration JWT dans l'app
+    
+    # Désactiver le rate limiting en mode test
+    if app.config.get("TESTING"):
+        limiter.enabled = False
+    limiter.init_app(app) # intégration Flask-Limiter
+    
+    # Configuration CORS
+    CORS(app, resources={
+        r"/v1/*": {
+            "origins": os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "expose_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600
+        }
+    })
 
     # Activer les FK en SQLite (important pour des tests d'intégrité corrects)
     with app.app_context():
