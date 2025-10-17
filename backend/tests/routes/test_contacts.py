@@ -340,6 +340,7 @@ class TestContactsRoutes:
     def test_get_contact_success(self, client, app):
         """Récupérer un contact par son ID."""
         token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
         
         with app.app_context():
             # Créer un autre utilisateur et l'ajouter comme contact
@@ -358,7 +359,7 @@ class TestContactsRoutes:
             contact_id = contact.id
             
             # Récupérer le contact
-            response = client.get(f'/v1/contacts/{contact_id}')
+            response = client.get(f'/v1/contacts/{contact_id}', headers=headers)
             
             assert response.status_code == 200
             data = response.get_json()
@@ -369,8 +370,11 @@ class TestContactsRoutes:
     @pytest.mark.integration
     def test_get_contact_not_found(self, client, app):
         """Récupérer un contact inexistant retourne 404."""
+        token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
+        
         with app.app_context():
-            response = client.get('/v1/contacts/99999')
+            response = client.get('/v1/contacts/99999', headers=headers)
             
             assert response.status_code == 404
 
@@ -380,6 +384,7 @@ class TestContactsRoutes:
     def test_update_contact_success(self, client, app):
         """Modifier un contact existant."""
         token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
         
         with app.app_context():
             user2 = User(username='user2', email='user2@test.com', password_hash='hash')
@@ -396,10 +401,13 @@ class TestContactsRoutes:
             contact_id = contact.id
             
             # Modifier le contact
-            response = client.put(f'/v1/contacts/{contact_id}', json={
-                'nickname': 'New Nickname',
-                'contact_action': 'work'
-            })
+            response = client.put(f'/v1/contacts/{contact_id}',
+                headers=headers,
+                json={
+                    'nickname': 'New Nickname',
+                    'contact_action': 'work'
+                }
+            )
             
             assert response.status_code == 200
             data = response.get_json()
@@ -409,10 +417,16 @@ class TestContactsRoutes:
     @pytest.mark.integration
     def test_update_contact_not_found(self, client, app):
         """Modifier un contact inexistant retourne 404."""
+        token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
+        
         with app.app_context():
-            response = client.put('/v1/contacts/99999', json={
-                'nickname': 'Test'
-            })
+            response = client.put('/v1/contacts/99999',
+                headers=headers,
+                json={
+                    'nickname': 'Test'
+                }
+            )
             
             assert response.status_code == 404
 
@@ -422,6 +436,7 @@ class TestContactsRoutes:
     def test_delete_contact_success(self, client, app):
         """Supprimer un contact existant."""
         token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
         
         with app.app_context():
             user2 = User(username='user2', email='user2@test.com', password_hash='hash')
@@ -438,7 +453,7 @@ class TestContactsRoutes:
             contact_id = contact.id
             
             # Supprimer le contact
-            response = client.delete(f'/v1/contacts/{contact_id}')
+            response = client.delete(f'/v1/contacts/{contact_id}', headers=headers)
             
             assert response.status_code == 200
             
@@ -449,7 +464,10 @@ class TestContactsRoutes:
     @pytest.mark.integration
     def test_delete_contact_not_found(self, client, app):
         """Supprimer un contact inexistant retourne 404."""
+        token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        headers = {'Authorization': f'Bearer {token}'}
+        
         with app.app_context():
-            response = client.delete('/v1/contacts/99999')
+            response = client.delete('/v1/contacts/99999', headers=headers)
             
             assert response.status_code == 404
