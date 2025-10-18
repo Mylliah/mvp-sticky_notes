@@ -115,7 +115,10 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert data == []
+            assert data['notes'] == []
+            assert data['total'] == 0
+            assert data['page'] == 1
+            assert data['per_page'] == 20
 
     @pytest.mark.integration
     def test_list_notes_with_notes(self, client, app):
@@ -135,11 +138,12 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 2
+            assert len(data['notes']) == 2
+            assert data['total'] == 2
             # Les notes sont maintenant triées par date décroissante (plus récente en premier)
-            assert data[0]['content'] == 'Note 2'
-            assert data[1]['content'] == 'Note 1'
-            assert data[0]['important'] is True
+            assert data['notes'][0]['content'] == 'Note 2'
+            assert data['notes'][1]['content'] == 'Note 1'
+            assert data['notes'][0]['important'] is True
 
     @pytest.mark.integration
     def test_list_notes_requires_auth(self, client, app):
@@ -385,9 +389,9 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 1
-            assert data[0]['content'] == 'Important note'
-            assert data[0]['important'] is True
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Important note'
+            assert data['notes'][0]['important'] is True
 
     @pytest.mark.integration
     def test_list_notes_filter_important_by_me(self, client, app):
@@ -413,8 +417,8 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 1
-            assert data[0]['content'] == 'Priority note'
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Priority note'
 
     @pytest.mark.integration
     def test_list_notes_filter_unread(self, client, app):
@@ -440,8 +444,8 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 1
-            assert data[0]['content'] == 'Unread note'
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Unread note'
 
     @pytest.mark.integration
     def test_list_notes_filter_received(self, client, app):
@@ -478,8 +482,8 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 1
-            assert data[0]['content'] == 'Received note'
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Received note'
 
     @pytest.mark.integration
     def test_list_notes_filter_sent(self, client, app):
@@ -515,8 +519,8 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 1
-            assert data[0]['content'] == 'Sent note'
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Sent note'
 
     @pytest.mark.integration
     def test_list_notes_sort_date_asc(self, client, app):
@@ -535,9 +539,9 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 2
-            assert data[0]['content'] == 'Old note'
-            assert data[1]['content'] == 'New note'
+            assert len(data['notes']) == 2
+            assert data['notes'][0]['content'] == 'Old note'
+            assert data['notes'][1]['content'] == 'New note'
 
     @pytest.mark.integration
     def test_list_notes_sort_important_first(self, client, app):
@@ -557,9 +561,165 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
-            assert len(data) == 3
-            assert data[0]['content'] == 'Important note'
-            assert data[0]['important'] is True
+            assert len(data['notes']) == 3
+            assert data['notes'][0]['content'] == 'Important note'
+            assert data['notes'][0]['important'] is True
+
+    # === Tests de pagination ===
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_default(self, client, app):
+        """Test pagination avec valeurs par défaut (page=1, per_page=20)."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer 5 notes
+            for i in range(5):
+                note = Note(content=f'Note {i+1}', creator_id=user_id)
+                db.session.add(note)
+            db.session.commit()
+            
+            response = client.get('/v1/notes',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data['notes']) == 5
+            assert data['total'] == 5
+            assert data['page'] == 1
+            assert data['per_page'] == 20
+            assert data['pages'] == 1
+            assert data['has_next'] is False
+            assert data['has_prev'] is False
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_custom_per_page(self, client, app):
+        """Test pagination avec per_page personnalisé."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer 10 notes
+            for i in range(10):
+                note = Note(content=f'Note {i+1}', creator_id=user_id)
+                db.session.add(note)
+            db.session.commit()
+            
+            # Demander 3 notes par page
+            response = client.get('/v1/notes?per_page=3',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data['notes']) == 3
+            assert data['total'] == 10
+            assert data['page'] == 1
+            assert data['per_page'] == 3
+            assert data['pages'] == 4
+            assert data['has_next'] is True
+            assert data['has_prev'] is False
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_page_2(self, client, app):
+        """Test pagination page 2."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer 10 notes
+            for i in range(10):
+                note = Note(content=f'Note {i+1}', creator_id=user_id)
+                db.session.add(note)
+            db.session.commit()
+            
+            # Demander page 2 avec 3 notes par page
+            response = client.get('/v1/notes?page=2&per_page=3',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data['notes']) == 3
+            assert data['total'] == 10
+            assert data['page'] == 2
+            assert data['per_page'] == 3
+            assert data['pages'] == 4
+            assert data['has_next'] is True
+            assert data['has_prev'] is True
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_last_page(self, client, app):
+        """Test pagination dernière page (incomplète)."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer 10 notes
+            for i in range(10):
+                note = Note(content=f'Note {i+1}', creator_id=user_id)
+                db.session.add(note)
+            db.session.commit()
+            
+            # Demander page 4 (dernière) avec 3 notes par page
+            response = client.get('/v1/notes?page=4&per_page=3',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data['notes']) == 1  # Seulement 1 note sur la dernière page
+            assert data['total'] == 10
+            assert data['page'] == 4
+            assert data['per_page'] == 3
+            assert data['pages'] == 4
+            assert data['has_next'] is False
+            assert data['has_prev'] is True
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_max_per_page(self, client, app):
+        """Test que per_page est limité à 100 max."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            # Créer 5 notes
+            for i in range(5):
+                note = Note(content=f'Note {i+1}', creator_id=user_id)
+                db.session.add(note)
+            db.session.commit()
+            
+            # Demander 200 notes par page (devrait être limité à 100)
+            response = client.get('/v1/notes?per_page=200',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['per_page'] == 100  # Limité à 100
+
+    @pytest.mark.integration
+    def test_list_notes_pagination_invalid_values(self, client, app):
+        """Test que les valeurs invalides sont corrigées."""
+        token, user_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        
+        with app.app_context():
+            note = Note(content='Test', creator_id=user_id)
+            db.session.add(note)
+            db.session.commit()
+            
+            # page=0 devrait être corrigé à 1
+            response = client.get('/v1/notes?page=0',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['page'] == 1
+            
+            # per_page=-5 devrait être corrigé à 20
+            response = client.get('/v1/notes?per_page=-5',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['per_page'] == 20
 
     # === GET /notes/<id>/assignments - Vue créateur sur les destinataires ===
 

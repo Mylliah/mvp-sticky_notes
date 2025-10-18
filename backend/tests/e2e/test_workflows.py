@@ -446,17 +446,17 @@ class TestUserIsolationWorkflows:
             response = client.get('/v1/notes',
                 headers={'Authorization': f'Bearer {token_user1}'}
             )
-            user1_notes = response.get_json()
-            assert len(user1_notes) == 2
-            assert all('User1' in note['content'] for note in user1_notes)
+            user1_data = response.get_json()
+            assert len(user1_data['notes']) == 2
+            assert all('User1' in note['content'] for note in user1_data['notes'])
             
             # User2 ne voit que ses 3 notes
             response = client.get('/v1/notes',
                 headers={'Authorization': f'Bearer {token_user2}'}
             )
-            user2_notes = response.get_json()
-            assert len(user2_notes) == 3
-            assert all('User2' in note['content'] for note in user2_notes)
+            user2_data = response.get_json()
+            assert len(user2_data['notes']) == 3
+            assert all('User2' in note['content'] for note in user2_data['notes'])
             
             # User1 voit uniquement lui-même dans ses contacts (pas encore d'ajout)
             response = client.get('/v1/contacts',

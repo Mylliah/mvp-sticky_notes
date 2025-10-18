@@ -39,8 +39,22 @@ def get_notes():
     Query Parameters:
       - filter: 'important', 'important_by_me', 'unread', 'received', 'sent'
       - sort: 'date_asc', 'date_desc', 'important_first'
+      - page: page number (default: 1)
+      - per_page: items per page (default: 20, max: 100)
     """
     current_user_id = int(get_jwt_identity())
+    
+    # Pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Limiter per_page à 100 max pour éviter surcharge
+    if per_page > 100:
+        per_page = 100
+    if per_page < 1:
+        per_page = 20
+    if page < 1:
+        page = 1
     
     # Query de base
     query = Note.query.join(
@@ -93,8 +107,22 @@ def get_notes():
         # Par défaut : date décroissante
         query = query.order_by(Note.created_date.desc())
     
-    notes = query.distinct().all()
-    return [note.to_dict() for note in notes], 200
+    # Pagination
+    pagination = query.distinct().paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    return {
+        "notes": [note.to_dict() for note in pagination.items],
+        "total": pagination.total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages,
+        "has_next": pagination.has_next,
+        "has_prev": pagination.has_prev
+    }, 200
 
 
 @bp.get('/notes/<int:note_id>')
