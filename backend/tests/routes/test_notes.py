@@ -56,7 +56,6 @@ class TestNotesRoutes:
             data = response.get_json()
             assert data['content'] == 'Ma première note'
             assert data['creator_id'] == user_id
-            assert data['status'] == 'en_cours'
             assert data['important'] is False
 
     @pytest.mark.integration
@@ -69,7 +68,6 @@ class TestNotesRoutes:
                 headers={'Authorization': f'Bearer {token}'},
                 json={
                     'content': 'Note importante',
-                    'status': 'fait',
                     'important': True
                 }
             )
@@ -77,7 +75,6 @@ class TestNotesRoutes:
             assert response.status_code == 201
             data = response.get_json()
             assert data['content'] == 'Note importante'
-            assert data['status'] == 'fait'
             assert data['important'] is True
 
     @pytest.mark.integration
@@ -274,13 +271,12 @@ class TestNotesRoutes:
             
             response = client.put(f'/v1/notes/{note_id}',
                 headers={'Authorization': f'Bearer {token}'},
-                json={'content': 'New content', 'status': 'fait', 'important': True}
+                json={'content': 'New content', 'important': True}
             )
             
             assert response.status_code == 200
             data = response.get_json()
             assert data['content'] == 'New content'
-            assert data['status'] == 'fait'
             assert data['important'] is True
             assert data['update_date'] is not None
 
@@ -297,7 +293,7 @@ class TestNotesRoutes:
             
             response = client.put(f'/v1/notes/{note_id}',
                 headers={'Authorization': f'Bearer {token}'},
-                json={'status': 'fait'}
+                json={'important': False}
             )
             
             assert response.status_code == 400

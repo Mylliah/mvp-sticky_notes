@@ -213,13 +213,11 @@ class TestUserModel:
             # Créer des notes
             note1 = Note(
                 content='Note 1',
-                creator_id=user.id,
-                status='en_cours'
+                creator_id=user.id
             )
             note2 = Note(
                 content='Note 2',
-                creator_id=user.id,
-                status='terminé'
+                creator_id=user.id
             )
             db.session.add_all([note1, note2])
             db.session.commit()
@@ -250,8 +248,7 @@ class TestUserModel:
             
             note = Note(
                 content='Note assignée',
-                creator_id=creator.id,
-                status='en_cours'
+                creator_id=creator.id
             )
             db.session.add(note)
             db.session.commit()

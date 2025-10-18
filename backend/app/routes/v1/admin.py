@@ -45,11 +45,8 @@ def get_stats():
         "total_contacts": Contact.query.count(),
         "total_assignments": Assignment.query.count(),
         "total_action_logs": ActionLog.query.count(),
-        "notes_by_status": {
-            "en_cours": Note.query.filter_by(status="en_cours").count(),
-            # Ajouter d'autres statuts si nécessaire
-        },
         "important_notes": Note.query.filter_by(important=True).count(),
+        "deleted_notes": Note.query.filter(Note.delete_date.isnot(None)).count(),
     }
     return jsonify(stats), 200
 

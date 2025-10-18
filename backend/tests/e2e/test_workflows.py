@@ -102,8 +102,7 @@ class TestNoteCollaborationWorkflows:
                 headers={'Authorization': f'Bearer {token_alice}'},
                 json={
                     'content': 'Réunion urgente demain à 10h - Présentation du projet MVP',
-                    'important': True,
-                    'status': 'en_cours'
+                    'important': True
                 }
             )
             assert response.status_code == 201
@@ -226,8 +225,7 @@ class TestNoteCollaborationWorkflows:
             response = client.put(f'/v1/notes/{note_id}',
                 headers={'Authorization': f'Bearer {token}'},
                 json={
-                    'content': 'Acheter du lait bio',
-                    'status': 'en_cours'
+                    'content': 'Acheter du lait bio'
                 }
             )
             assert response.status_code == 200
@@ -243,16 +241,14 @@ class TestNoteCollaborationWorkflows:
             assert response.status_code == 200
             assert response.get_json()['important'] is True
             
-            # 4. Changer statut à "fait"
+            # 4. Modifier encore le contenu
             response = client.put(f'/v1/notes/{note_id}',
                 headers={'Authorization': f'Bearer {token}'},
                 json={
-                    'content': 'Acheter du lait bio',
-                    'status': 'fait'
+                    'content': 'Acheter du lait bio et des oeufs'
                 }
             )
             assert response.status_code == 200
-            assert response.get_json()['status'] == 'fait'
             
             # 5. Supprimer la note (soft delete)
             response = client.delete(f'/v1/notes/{note_id}',

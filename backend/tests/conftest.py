@@ -155,7 +155,6 @@ def sample_note(app, sample_user):
         note = Note(
             content='Test note content',
             creator_id=sample_user.id,
-            status='en_cours',
             important=False
         )
         db.session.add(note)
@@ -170,7 +169,6 @@ def note(app, user):
         note = Note(
             content='This is a test note',
             creator_id=user.id,
-            status='en_cours',
             important=False
         )
         db.session.add(note)

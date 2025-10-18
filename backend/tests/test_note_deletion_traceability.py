@@ -18,7 +18,7 @@ class TestNoteDeletionByCreator:
             db.session.add(user)
             db.session.commit()
             
-            note = Note(content="Test note", creator_id=user.id, status="en_cours")
+            note = Note(content="Test note", creator_id=user.id)
             db.session.add(note)
             db.session.commit()
             note_id = note.id
@@ -48,7 +48,7 @@ class TestNoteDeletionByCreator:
             db.session.add(user)
             db.session.commit()
             
-            note = Note(content="Test note", creator_id=user.id, status="en_cours")
+            note = Note(content="Test note", creator_id=user.id)
             db.session.add(note)
             db.session.commit()
             note_id = note.id
@@ -93,7 +93,7 @@ class TestNoteDeletionByRecipient:
             db.session.commit()
             
             # Alice crée une note
-            note = Note(content="Note pour Bob", creator_id=alice.id, status="en_cours")
+            note = Note(content="Note pour Bob", creator_id=alice.id)
             db.session.add(note)
             db.session.commit()
             
@@ -137,7 +137,7 @@ class TestNoteDeletionByRecipient:
             db.session.commit()
             
             # Note + assignment
-            note = Note(content="Note pour Charlie", creator_id=alice.id, status="en_cours")
+            note = Note(content="Note pour Charlie", creator_id=alice.id)
             db.session.add(note)
             db.session.commit()
             
@@ -187,7 +187,7 @@ class TestNoteDeletionAuthorization:
             db.session.commit()
             
             # Note assignée à Bob
-            note = Note(content="Note privée", creator_id=alice.id, status="en_cours")
+            note = Note(content="Note privée", creator_id=alice.id)
             db.session.add(note)
             db.session.commit()
             
@@ -226,7 +226,7 @@ class TestNoteDeletionTraceability:
             db.session.add(alice)
             db.session.commit()
             
-            note = Note(content="Note Alice", creator_id=alice.id, status="en_cours")
+            note = Note(content="Note Alice", creator_id=alice.id)
             db.session.add(note)
             db.session.commit()
             
@@ -257,7 +257,7 @@ class TestNoteDeletionTraceability:
             db.session.add_all([contact_ab, contact_ba])
             db.session.commit()
             
-            note = Note(content="Note pour Bob", creator_id=alice.id, status="en_cours")
+            note = Note(content="Note pour Bob", creator_id=alice.id)
             db.session.add(note)
             db.session.commit()
             

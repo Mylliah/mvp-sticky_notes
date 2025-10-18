@@ -34,7 +34,6 @@ class TestNoteModel:
             db.session.add(note)
             db.session.commit()
             assert note.id is not None
-            assert note.status == 'en_cours'
             assert isinstance(note.created_date, datetime)
 
     @pytest.mark.unit
@@ -46,7 +45,6 @@ class TestNoteModel:
             db.session.add(note)
             db.session.commit()
 
-            assert note.status == 'en_cours'
             assert note.important is False
             assert note.update_date is None
             assert note.read_date is None
@@ -75,13 +73,14 @@ class TestNoteModel:
 
     @pytest.mark.unit
     def test_note_invalid_status(self, app):
-        """Un statut inconnu doit être accepté (aucune contrainte DB)."""
+        """Test que le modèle Note fonctionne sans le champ status (supprimé)."""
         with app.app_context():
             user = self._create_sample_user('weirdstatus', 'weird@test.com')
-            note = Note(content='Statut étrange', creator_id=user.id, status='inconnu')
+            note = Note(content='Note sans statut', creator_id=user.id)
             db.session.add(note)
             db.session.commit()
-            assert note.status == 'inconnu'
+            assert note.id is not None
+            assert not hasattr(note, 'status')
 
     # === RELATIONS ===
 
@@ -140,7 +139,7 @@ class TestNoteModel:
         with app.app_context():
             user = self._create_sample_user()
             long_content = "X" * 100
-            note = Note(content=long_content, creator_id=user.id, important=True, status="done")
+            note = Note(content=long_content, creator_id=user.id, important=True)
             db.session.add(note)
             db.session.commit()
             rep = repr(note)
@@ -236,15 +235,14 @@ class TestNoteModel:
 
     @pytest.mark.unit
     def test_note_with_finished_date(self, app):
-        """Test le champ finished_date s’il est présent dynamiquement."""
+        """Test que finished_date n'existe plus (supprimé du modèle)."""
         with app.app_context():
             creator = self._create_sample_user('fin', 'fin@test.com')
-            note = Note(content='Avec finished_date', creator_id=creator.id)
-            note.finished_date = datetime.now(timezone.utc)
+            note = Note(content='Note normale', creator_id=creator.id)
             db.session.add(note)
             db.session.commit()
             d = note.to_details_dict()
-            assert d['finished_date'] is not None
+            assert 'finished_date' not in d
 
     # === REQUÊTES ET RECHERCHES ===
 
@@ -255,13 +253,13 @@ class TestNoteModel:
             user = self._create_sample_user('query', 'query@test.com')
             n1 = Note(content='N1', creator_id=user.id, important=True)
             n2 = Note(content='N2', creator_id=user.id, important=False)
-            n3 = Note(content='N3', creator_id=user.id, status='done')
+            n3 = Note(content='N3', creator_id=user.id)
             db.session.add_all([n1, n2, n3])
             db.session.commit()
 
             assert len(Note.query.filter_by(creator_id=user.id).all()) == 3
             assert Note.query.filter_by(important=True).first().content == 'N1'
-            assert Note.query.filter(Note.status == 'done').first().content == 'N3'
+            assert Note.query.filter_by(important=False).first().content in ['N2', 'N3']
 
     # === CAS LIMITES ET ROBUSTESSE ===
 

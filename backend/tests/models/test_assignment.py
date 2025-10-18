@@ -17,7 +17,7 @@ class TestAssignmentModel:
         return user
 
     def _create_sample_note(self, user_id, content='Sample note'):
-        note = Note(content=content, creator_id=user_id, status='en_cours')
+        note = Note(content=content, creator_id=user_id)
         db.session.add(note)
         db.session.commit()
         return note
