@@ -18,8 +18,8 @@ class Note(db.Model):
     delete_date = db.Column(db.DateTime)
     deleted_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # QUI a supprimé (créateur ou destinataire)
     read_date = db.Column(db.DateTime)
-    finished_date = db.Column(db.DateTime)
-    status = db.Column(db.String(50), nullable=False, default="en_cours")
+    # finished_date et status SUPPRIMÉS : ambigus pour multi-destinataires
+    # Utiliser Assignment.recipient_status et Assignment.finished_date à la place
     important = db.Column(db.Boolean, default=False)
 
     # Relations (foreign_keys spécifié explicitement car 2 FK vers User: creator_id et deleted_by)
@@ -29,20 +29,18 @@ class Note(db.Model):
 
     def __repr__(self):
         """Représentation textuelle pour le débogage."""
-        return f"<Note id={self.id} status={self.status!r} important={self.important} content={self.content[:30]!r}>"
+        return f"<Note id={self.id} important={self.important} content={self.content[:30]!r}>"
 
     def to_dict(self):
         """Conversion en dict pour API"""
         return {
             "id": self.id,
             "content": self.content,
-            "status": self.status,
             "important": self.important,
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
             "read_date": self.read_date.isoformat() if self.read_date else None,
-            "finished_date": self.finished_date.isoformat() if self.finished_date else None,
             "creator_id": self.creator_id,
         }
 
@@ -52,14 +50,12 @@ class Note(db.Model):
             "id": self.id,
             "assigned_to": assignment.user_id if assignment else None,
             "assigned_date": assignment.assigned_date.isoformat() if assignment else None,
-            "status": self.status,
             "important": self.important,
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
             "deleted_by": self.deleted_by,  # Traçabilité : QUI a supprimé (créateur ou destinataire)
             "read_date": self.read_date.isoformat() if self.read_date else None,
-            "finished_date": self.finished_date.isoformat() if self.finished_date else None,
         }
 
     def to_summary_dict(self, current_user_id=None):
@@ -80,7 +76,6 @@ class Note(db.Model):
                 assigned_display = ", ".join(assigned_usernames)
         return {
             "id": self.id,
-            "status": self.status,
             "important": self.important,
             "preview": self.content[:30] + "..." if len(self.content) > 30 else self.content,
             "creator": self.creator.username if self.creator else None,

@@ -153,6 +153,42 @@ def toggle_priority(assignment_id):
     db.session.commit()
     return assignment.to_dict()
 
+@bp.put('/assignments/<int:assignment_id>/status')
+@jwt_required()
+def update_status(assignment_id):
+    """Modifier le statut personnel du destinataire (authentification requise)."""
+    from datetime import datetime, timezone
+    
+    current_user_id = int(get_jwt_identity())
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # Vérifier que l'utilisateur connecté est bien le destinataire
+    if assignment.user_id != current_user_id:
+        abort(403, description="You can only update status on your own assignments")
+    
+    data = request.get_json()
+    if not data or "recipient_status" not in data:
+        abort(400, description="Missing recipient_status")
+    
+    # Valider le statut
+    valid_statuses = ['en_cours', 'terminé']
+    if data["recipient_status"] not in valid_statuses:
+        abort(400, description=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    # Mettre à jour le statut
+    assignment.recipient_status = data["recipient_status"]
+    
+    # Gérer finished_date selon le statut
+    if data["recipient_status"] == "terminé":
+        # Marquer comme terminé avec timestamp
+        assignment.finished_date = datetime.now(timezone.utc)
+    else:
+        # Remettre en cours : reset finished_date
+        assignment.finished_date = None
+    
+    db.session.commit()
+    return assignment.to_dict()
+
 @bp.get('/assignments/unread')
 @jwt_required()
 def get_unread_assignments():

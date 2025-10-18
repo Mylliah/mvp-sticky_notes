@@ -22,7 +22,6 @@ def create_note():
     note = Note(
         content=data["content"],
         creator_id=current_user_id,
-        status=data.get("status", "en_cours"),
         important=data.get("important", False)
     )
     db.session.add(note)
@@ -101,22 +100,73 @@ def get_notes():
 @bp.get('/notes/<int:note_id>')
 @jwt_required()
 def get_note(note_id):
-    """Récupérer une note par son ID (affichage complet)."""
+    """Récupérer une note par son ID avec infos contextuelles selon le rôle."""
     current_user_id = int(get_jwt_identity())
     note = Note.query.get_or_404(note_id)
     
-    # Auto-marquer comme lu si c'est une assignation non lue
-    assignment = Assignment.query.filter_by(
+    # Vérifier accès (créateur OU destinataire)
+    is_creator = note.creator_id == current_user_id
+    my_assignment = Assignment.query.filter_by(
         note_id=note_id,
         user_id=current_user_id
     ).first()
     
-    if assignment and not assignment.is_read:
-        assignment.is_read = True
+    if not is_creator and not my_assignment:
+        abort(403, description="Access denied")
+    
+    # Auto-marquer comme lu si destinataire
+    if my_assignment and not my_assignment.is_read:
+        my_assignment.is_read = True
         note.read_date = datetime.now(timezone.utc)
         db.session.commit()
     
-    return note.to_dict()
+    # Construire la réponse de base
+    response = note.to_dict()
+    
+    if is_creator:
+        # CRÉATEUR : voir tous les destinataires et leurs statuts
+        all_assignments = Assignment.query.filter_by(note_id=note_id).all()
+        
+        # Liste des usernames qui ont lu
+        response["read_by"] = [
+            a.user.username for a in all_assignments if a.is_read and a.user
+        ]
+        
+        # Liste de tous les destinataires
+        response["assigned_to"] = [
+            a.user.username for a in all_assignments if a.user
+        ]
+        
+        # Détails complets des assignations (visible par créateur)
+        response["assignments_details"] = [
+            {
+                "user_id": a.user_id,
+                "username": a.user.username if a.user else None,
+                "is_read": a.is_read,
+                "recipient_status": a.recipient_status,
+                "finished_date": a.finished_date.isoformat() if a.finished_date else None,
+                "assigned_date": a.assigned_date.isoformat()
+                # recipient_priority est PRIVÉ, pas inclus
+            }
+            for a in all_assignments
+        ]
+        
+    else:
+        # DESTINATAIRE : voir uniquement ses propres infos
+        response["my_assignment"] = {
+            "is_read": my_assignment.is_read,
+            "recipient_priority": my_assignment.recipient_priority,
+            "recipient_status": my_assignment.recipient_status,
+            "finished_date": my_assignment.finished_date.isoformat() if my_assignment.finished_date else None,
+            "assigned_date": my_assignment.assigned_date.isoformat()
+        }
+        
+        # Confidentialité : le destinataire ne voit pas les autres
+        response["assigned_to"] = None
+        response["read_by"] = None
+        response["assignments_details"] = None
+    
+    return response
 
 
 @bp.get('/notes/<int:note_id>/details')
@@ -148,13 +198,16 @@ def get_note_assignments(note_id):
         "creator_id": note.creator_id,
         "total_recipients": len(assignments),
         "read_count": sum(1 for a in assignments if a.is_read),
+        "completed_count": sum(1 for a in assignments if a.recipient_status == 'terminé'),
         "assignments": [
             {
                 "id": a.id,
                 "user_id": a.user_id,
                 "username": a.user.username if a.user else None,
                 "assigned_date": a.assigned_date.isoformat(),
-                "is_read": a.is_read
+                "is_read": a.is_read,
+                "recipient_status": a.recipient_status,
+                "finished_date": a.finished_date.isoformat() if a.finished_date else None
                 # recipient_priority est PRIVÉ, le créateur ne le voit pas
             }
             for a in assignments
@@ -177,8 +230,6 @@ def update_note(note_id):
     if not data or "content" not in data:
         abort(400, description="Missing content")
     note.content = data["content"]
-    if "status" in data:
-        note.status = data["status"]
     if "important" in data:
         note.important = data["important"]
     note.update_date = datetime.now(timezone.utc)
