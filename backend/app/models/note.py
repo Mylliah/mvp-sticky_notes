@@ -17,7 +17,8 @@ class Note(db.Model):
     update_date = db.Column(db.DateTime)
     delete_date = db.Column(db.DateTime)
     deleted_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # QUI a supprimé (créateur ou destinataire)
-    read_date = db.Column(db.DateTime)
+    # read_date SUPPRIMÉ : ambigu pour multi-destinataires
+    # Utiliser Assignment.read_date à la place (date de lecture individuelle)
     # finished_date et status SUPPRIMÉS : ambigus pour multi-destinataires
     # Utiliser Assignment.recipient_status et Assignment.finished_date à la place
     important = db.Column(db.Boolean, default=False)
@@ -40,7 +41,6 @@ class Note(db.Model):
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
-            "read_date": self.read_date.isoformat() if self.read_date else None,
             "creator_id": self.creator_id,
         }
 
@@ -55,7 +55,6 @@ class Note(db.Model):
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
             "deleted_by": self.deleted_by,  # Traçabilité : QUI a supprimé (créateur ou destinataire)
-            "read_date": self.read_date.isoformat() if self.read_date else None,
         }
 
     def to_summary_dict(self, current_user_id=None):

@@ -117,7 +117,7 @@ def get_note(note_id):
     # Auto-marquer comme lu si destinataire
     if my_assignment and not my_assignment.is_read:
         my_assignment.is_read = True
-        note.read_date = datetime.now(timezone.utc)
+        my_assignment.read_date = datetime.now(timezone.utc)
         db.session.commit()
     
     # Construire la réponse de base
@@ -143,6 +143,7 @@ def get_note(note_id):
                 "user_id": a.user_id,
                 "username": a.user.username if a.user else None,
                 "is_read": a.is_read,
+                "read_date": a.read_date.isoformat() if a.read_date else None,
                 "recipient_status": a.recipient_status,
                 "finished_date": a.finished_date.isoformat() if a.finished_date else None,
                 "assigned_date": a.assigned_date.isoformat()
@@ -155,6 +156,7 @@ def get_note(note_id):
         # DESTINATAIRE : voir uniquement ses propres infos
         response["my_assignment"] = {
             "is_read": my_assignment.is_read,
+            "read_date": my_assignment.read_date.isoformat() if my_assignment.read_date else None,
             "recipient_priority": my_assignment.recipient_priority,
             "recipient_status": my_assignment.recipient_status,
             "finished_date": my_assignment.finished_date.isoformat() if my_assignment.finished_date else None,
