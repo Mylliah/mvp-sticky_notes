@@ -254,12 +254,12 @@ class TestAutoMarkAsRead:
         db.session.add(note)
         db.session.commit()
         
-        assert note.read_date is None
-        
         # Alice assigne à Bob
         assignment = Assignment(note_id=note.id, user_id=user2.id, is_read=False)
         db.session.add(assignment)
         db.session.commit()
+        
+        assert assignment.read_date is None
         
         # Bob ouvre la note
         from flask_jwt_extended import create_access_token
@@ -270,9 +270,9 @@ class TestAutoMarkAsRead:
         
         assert response.status_code == 200
         
-        # Vérifier que read_date est défini
-        db.session.refresh(note)
-        assert note.read_date is not None
+        # Vérifier que read_date est défini dans l'assignment
+        db.session.refresh(assignment)
+        assert assignment.read_date is not None
     
     def test_opening_already_read_note_does_not_change_is_read(self, client, app):
         """Ouvrir une note déjà lue ne change pas is_read."""

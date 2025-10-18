@@ -47,7 +47,6 @@ class TestNoteModel:
 
             assert note.important is False
             assert note.update_date is None
-            assert note.read_date is None
             assert note.delete_date is None
 
     # === VALIDATIONS ===
@@ -157,7 +156,6 @@ class TestNoteModel:
                 creator_id=user.id,
                 created_date=now,
                 update_date=now,
-                read_date=now,
                 delete_date=now
             )
             db.session.add(note)
