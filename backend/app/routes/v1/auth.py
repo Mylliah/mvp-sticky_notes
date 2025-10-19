@@ -1,12 +1,13 @@
 """
 Blueprint pour l'authentification.
 """
+import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
 from ... import db, limiter
-from ...models import User
+from ...models import User, ActionLog
 
 bp = Blueprint('auth', __name__)
 
@@ -43,6 +44,16 @@ def register():
         password_hash=generate_password_hash(password)
     )
     db.session.add(user)
+    db.session.commit()
+
+    # Log de création d'utilisateur
+    action_log = ActionLog(
+        user_id=user.id,
+        action_type="user_registered",
+        target_id=user.id,
+        payload=json.dumps({"username": username, "email": email})
+    )
+    db.session.add(action_log)
     db.session.commit()
 
     # Génère un token JWT pour login automatique

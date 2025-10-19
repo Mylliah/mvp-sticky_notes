@@ -1,10 +1,11 @@
 """
 Routes pour la gestion des assignations.
 """
+import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
-from ...models import Assignment, Note, User
+from ...models import Assignment, Note, User, ActionLog
 
 bp = Blueprint('assignments', __name__)
 
@@ -59,6 +60,17 @@ def create_assignment():
     )
     db.session.add(assignment)
     db.session.commit()
+    
+    # Log de création d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_created",
+        target_id=assignment.id,
+        payload=json.dumps({"note_id": data["note_id"], "assigned_to": data["user_id"]})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict(), 201
 
 @bp.get('/assignments')
@@ -119,6 +131,17 @@ def update_assignment(assignment_id):
         assignment.is_read = data["is_read"]
         
     db.session.commit()
+    
+    # Log de modification d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"note_id": assignment.note_id, "user_id": assignment.user_id})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict()
 
 @bp.delete('/assignments/<int:assignment_id>')
@@ -133,8 +156,23 @@ def delete_assignment(assignment_id):
     if note.creator_id != current_user_id:
         abort(403, description="Only the creator can delete assignments")
     
+    # Sauvegarder info pour le log
+    note_id = assignment.note_id
+    assigned_user_id = assignment.user_id
+    
     db.session.delete(assignment)
     db.session.commit()
+    
+    # Log de suppression d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_deleted",
+        target_id=assignment_id,
+        payload=json.dumps({"note_id": note_id, "assigned_user_id": assigned_user_id})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return {"deleted": True}
 
 @bp.put('/assignments/<int:assignment_id>/priority')
@@ -151,6 +189,17 @@ def toggle_priority(assignment_id):
     # Basculer la priorité
     assignment.recipient_priority = not assignment.recipient_priority
     db.session.commit()
+    
+    # Log de modification de priorité
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_priority_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"priority": assignment.recipient_priority})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict()
 
 @bp.put('/assignments/<int:assignment_id>/status')
@@ -187,6 +236,17 @@ def update_status(assignment_id):
         assignment.finished_date = None
     
     db.session.commit()
+    
+    # Log de modification de statut
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_status_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"status": assignment.recipient_status})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict()
 
 @bp.get('/assignments/unread')

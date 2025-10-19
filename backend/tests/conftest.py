@@ -244,7 +244,7 @@ def authenticated_headers(client, sample_user):
     """Fixture pour obtenir les headers d'authentification."""
     # Simuler une connexion pour obtenir un token JWT
     response = client.post('/v1/auth/login', json={
-        'username': sample_user.username,
+        'email': sample_user.email,
         'password': 'test_password'
     })
     

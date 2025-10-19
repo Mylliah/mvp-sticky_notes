@@ -29,7 +29,7 @@ def create_user_and_login(client, app, username, email, password):
     
     # Login pour obtenir le token
     response = client.post('/v1/auth/login', json={
-        'username': username,
+        'email': email,
         'password': password
     })
     token = response.get_json()['access_token']

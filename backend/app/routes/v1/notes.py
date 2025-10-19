@@ -1,12 +1,13 @@
 """
 Routes pour la gestion des notes.
 """
+import json
 from datetime import datetime, timezone
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from ... import db
-from ...models import Note, Assignment
+from ...models import Note, Assignment, ActionLog
 
 bp = Blueprint('notes', __name__)
 
@@ -26,6 +27,17 @@ def create_note():
     )
     db.session.add(note)
     db.session.commit()
+    
+    # Log de création de note
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="note_created",
+        target_id=note.id,
+        payload=json.dumps({"important": note.important})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return note.to_dict(), 201
 
 
@@ -264,6 +276,17 @@ def update_note(note_id):
         note.important = data["important"]
     note.update_date = datetime.now(timezone.utc)
     db.session.commit()
+    
+    # Log de modification de note
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="note_updated",
+        target_id=note.id,
+        payload=json.dumps({"important": note.important})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return note.to_dict()
 
 
@@ -290,6 +313,16 @@ def delete_note(note_id):
     # Soft delete avec traçabilité de QUI a supprimé
     note.delete_date = datetime.now(timezone.utc)
     note.deleted_by = current_user_id
+    db.session.commit()
+    
+    # Log de suppression de note
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="note_deleted",
+        target_id=note.id,
+        payload=json.dumps({"is_creator": is_creator})
+    )
+    db.session.add(action_log)
     db.session.commit()
     
     return note.to_dict()

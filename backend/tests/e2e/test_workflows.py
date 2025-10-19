@@ -40,7 +40,7 @@ class TestNoteCollaborationWorkflows:
             
             # Alice se connecte
             response = client.post('/v1/auth/login', json={
-                'username': 'alice',
+                'email': 'alice@example.com',
                 'password': 'SecurePass123!'
             })
             assert response.status_code == 200
@@ -69,7 +69,7 @@ class TestNoteCollaborationWorkflows:
             
             # Bob se connecte et ajoute Alice (réciprocité requise)
             response = client.post('/v1/auth/login', json={
-                'username': 'bob',
+                'email': 'bob@example.com',
                 'password': 'BobPass456!'
             })
             assert response.status_code == 200
@@ -129,7 +129,7 @@ class TestNoteCollaborationWorkflows:
             
             # 6. Bob se connecte
             response = client.post('/v1/auth/login', json={
-                'username': 'bob',
+                'email': 'bob@example.com',
                 'password': 'BobPass456!'
             })
             assert response.status_code == 200
@@ -208,7 +208,7 @@ class TestNoteCollaborationWorkflows:
             user_id = response.get_json()['id']
             
             response = client.post('/v1/auth/login', json={
-                'username': 'charlie',
+                'email': 'charlie@example.com',
                 'password': 'CharliePass!'
             })
             token = response.get_json()['access_token']
@@ -279,7 +279,7 @@ class TestNoteCollaborationWorkflows:
             manager_id = response.get_json()['id']
             
             response = client.post('/v1/auth/login', json={
-                'username': 'manager',
+                'email': 'manager@example.com',
                 'password': 'ManagerPass!'
             })
             token_manager = response.get_json()['access_token']
@@ -298,7 +298,7 @@ class TestNoteCollaborationWorkflows:
                 
                 # Login du membre
                 response = client.post('/v1/auth/login', json={
-                    'username': f'member{i}',
+                    'email': f'member{i}@example.com',
                     'password': f'Member{i}Pass!'
                 })
                 member_token = response.get_json()['access_token']
@@ -347,7 +347,7 @@ class TestNoteCollaborationWorkflows:
             
             # Member 1 se connecte et marque comme lu
             response = client.post('/v1/auth/login', json={
-                'username': 'member1',
+                'email': 'member1@example.com',
                 'password': 'Member1Pass!'
             })
             token_member1 = response.get_json()['access_token']
@@ -395,7 +395,7 @@ class TestUserIsolationWorkflows:
             user1_id = response.get_json()['id']
             
             response = client.post('/v1/auth/login', json={
-                'username': 'user1',
+                'email': 'user1@example.com',
                 'password': 'User1Pass!'
             })
             token_user1 = response.get_json()['access_token']
@@ -409,7 +409,7 @@ class TestUserIsolationWorkflows:
             user2_id = response.get_json()['id']
             
             response = client.post('/v1/auth/login', json={
-                'username': 'user2',
+                'email': 'user2@example.com',
                 'password': 'User2Pass!'
             })
             token_user2 = response.get_json()['access_token']
@@ -493,7 +493,7 @@ class TestUserIsolationWorkflows:
                 
                 # Login
                 response = client.post('/v1/auth/login', json={
-                    'username': name,
+                    'email': f'{name}@example.com',
                     'password': f'{name.capitalize()}Pass!'
                 })
                 users[name]['token'] = response.get_json()['access_token']
@@ -560,7 +560,7 @@ class TestErrorHandlingWorkflows:
             user_id = response.get_json()['id']
             
             response = client.post('/v1/auth/login', json={
-                'username': 'testuser',
+                'email': 'test@example.com',
                 'password': 'TestPass!'
             })
             token = response.get_json()['access_token']
@@ -595,7 +595,7 @@ class TestErrorHandlingWorkflows:
             
             # Login contact1
             response = client.post('/v1/auth/login', json={
-                'username': 'contact1',
+                'email': 'contact1@example.com',
                 'password': 'Contact1Pass!'
             })
             token_contact1 = response.get_json()['access_token']

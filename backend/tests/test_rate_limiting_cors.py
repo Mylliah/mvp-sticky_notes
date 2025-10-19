@@ -40,7 +40,7 @@ class TestRateLimiting:
         # Vérifions que la route existe et est accessible
         with app.test_client() as client:
             response = client.post('/v1/auth/login', json={
-                'username': 'testuser',
+                'email': 'test@test.com',
                 'password': 'wrongpassword'
             })
             # La route fonctionne (rate limit désactivé en test)

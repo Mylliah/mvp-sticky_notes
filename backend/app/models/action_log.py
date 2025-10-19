@@ -11,7 +11,7 @@ class ActionLog(db.Model):
     __tablename__ = "action_logs"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     target_id = db.Column(db.Integer, nullable=False)  # id d'entité concernée
     action_type = db.Column(db.String(80), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
