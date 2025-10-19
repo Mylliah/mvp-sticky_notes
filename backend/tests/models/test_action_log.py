@@ -34,17 +34,15 @@ class TestActionLogModel:
 
     @pytest.mark.unit
     def test_action_log_missing_fields(self, app):
-        """user_id and action_type are required."""
+        """action_type is required, but user_id can be NULL (for deleted users)."""
         with app.app_context():
-            # missing user_id
-            log = ActionLog(user_id=None, target_id=1, action_type='x')
+            # user_id can be NULL (for audit logs of deleted users)
+            log = ActionLog(user_id=None, target_id=1, action_type='user_deleted')
             db.session.add(log)
-            with pytest.raises(Exception):
-                db.session.commit()
-            # La transaction est rollbackée sur exception; on doit rollbacker pour réutiliser la session
+            db.session.commit()  # Should succeed
             db.session.rollback()
 
-            # missing action_type
+            # missing action_type (still required)
             user = self._create_sample_user('act2', 'act2@test.com')
             log2 = ActionLog(user_id=user.id, target_id=2, action_type=None)
             db.session.add(log2)
