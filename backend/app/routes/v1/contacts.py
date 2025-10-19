@@ -1,10 +1,11 @@
 """
 Routes pour la gestion des contacts.
 """
+import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
-from ...models import Contact, User
+from ...models import Contact, User, ActionLog
 
 bp = Blueprint('contacts', __name__)
 
@@ -43,6 +44,17 @@ def create_contact():
     )
     db.session.add(contact)
     db.session.commit()
+    
+    # Log de création de contact
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="contact_created",
+        target_id=contact.id,
+        payload=json.dumps({"contact_username": contact_user.username, "nickname": data["nickname"]})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return contact.to_dict(), 201
 
 @bp.get('/contacts')
@@ -153,6 +165,17 @@ def update_contact(contact_id):
         contact.contact_action = data["contact_action"]
         
     db.session.commit()
+    
+    # Log de modification de contact
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="contact_updated",
+        target_id=contact.id,
+        payload=json.dumps({"nickname": contact.nickname})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return contact.to_dict()
 
 @bp.delete('/contacts/<int:contact_id>')
@@ -166,6 +189,20 @@ def delete_contact(contact_id):
     if contact.user_id != current_user_id:
         abort(403, description="You can only delete your own contacts")
     
+    # Sauvegarder info pour le log
+    contact_username = contact.contact_user.username if contact.contact_user else None
+    
     db.session.delete(contact)
     db.session.commit()
+    
+    # Log de suppression de contact
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="contact_deleted",
+        target_id=contact_id,
+        payload=json.dumps({"contact_username": contact_username})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return {"deleted": True}

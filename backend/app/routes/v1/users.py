@@ -1,11 +1,12 @@
 """
 Routes pour la gestion des utilisateurs.
 """
+import json
 from flask import Blueprint, request, abort, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
 from ... import db
-from ...models import User
+from ...models import User, ActionLog
 
 bp = Blueprint('users', __name__)
 
@@ -77,6 +78,19 @@ def delete_user(user_id):
         current_user = User.query.get(current_user_id)
         if not current_user or not current_user.is_admin():
             abort(403, description="You can only delete your own account")
+    
+    # Sauvegarder info pour le log
+    username = user.username
+    
+    # Log de suppression d'utilisateur (AVANT la suppression)
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="user_deleted",
+        target_id=user_id,
+        payload=json.dumps({"username": username})
+    )
+    db.session.add(action_log)
+    
     db.session.delete(user)
     db.session.commit()
     return {"deleted": True}

@@ -1,10 +1,11 @@
 """
 Routes pour la gestion des assignations.
 """
+import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
-from ...models import Assignment, Note, User
+from ...models import Assignment, Note, User, ActionLog
 
 bp = Blueprint('assignments', __name__)
 
@@ -59,6 +60,17 @@ def create_assignment():
     )
     db.session.add(assignment)
     db.session.commit()
+    
+    # Log de création d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_created",
+        target_id=assignment.id,
+        payload=json.dumps({"note_id": data["note_id"], "assigned_to": data["user_id"]})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict(), 201
 
 @bp.get('/assignments')
@@ -119,6 +131,17 @@ def update_assignment(assignment_id):
         assignment.is_read = data["is_read"]
         
     db.session.commit()
+    
+    # Log de modification d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"note_id": assignment.note_id, "user_id": assignment.user_id})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict()
 
 @bp.delete('/assignments/<int:assignment_id>')
@@ -133,8 +156,23 @@ def delete_assignment(assignment_id):
     if note.creator_id != current_user_id:
         abort(403, description="Only the creator can delete assignments")
     
+    # Sauvegarder info pour le log
+    note_id = assignment.note_id
+    assigned_user_id = assignment.user_id
+    
     db.session.delete(assignment)
     db.session.commit()
+    
+    # Log de suppression d'assignation
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_deleted",
+        target_id=assignment_id,
+        payload=json.dumps({"note_id": note_id, "assigned_user_id": assigned_user_id})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return {"deleted": True}
 
 @bp.put('/assignments/<int:assignment_id>/priority')
@@ -151,6 +189,64 @@ def toggle_priority(assignment_id):
     # Basculer la priorité
     assignment.recipient_priority = not assignment.recipient_priority
     db.session.commit()
+    
+    # Log de modification de priorité
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_priority_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"priority": assignment.recipient_priority})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
+    return assignment.to_dict()
+
+@bp.put('/assignments/<int:assignment_id>/status')
+@jwt_required()
+def update_status(assignment_id):
+    """Modifier le statut personnel du destinataire (authentification requise)."""
+    from datetime import datetime, timezone
+    
+    current_user_id = int(get_jwt_identity())
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # Vérifier que l'utilisateur connecté est bien le destinataire
+    if assignment.user_id != current_user_id:
+        abort(403, description="You can only update status on your own assignments")
+    
+    data = request.get_json()
+    if not data or "recipient_status" not in data:
+        abort(400, description="Missing recipient_status")
+    
+    # Valider le statut
+    valid_statuses = ['en_cours', 'terminé']
+    if data["recipient_status"] not in valid_statuses:
+        abort(400, description=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    # Mettre à jour le statut
+    assignment.recipient_status = data["recipient_status"]
+    
+    # Gérer finished_date selon le statut
+    if data["recipient_status"] == "terminé":
+        # Marquer comme terminé avec timestamp
+        assignment.finished_date = datetime.now(timezone.utc)
+    else:
+        # Remettre en cours : reset finished_date
+        assignment.finished_date = None
+    
+    db.session.commit()
+    
+    # Log de modification de statut
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="assignment_status_updated",
+        target_id=assignment.id,
+        payload=json.dumps({"status": assignment.recipient_status})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
     return assignment.to_dict()
 
 @bp.get('/assignments/unread')
