@@ -12,6 +12,14 @@ bp = Blueprint('users', __name__)
 
 # Route POST /users supprimée car redondante avec /auth/register
 
+@bp.get('/users/me')
+@jwt_required()
+def get_current_user():
+    """Récupérer le profil de l'utilisateur connecté."""
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(current_user_id)
+    return user.to_dict()
+
 @bp.get('/users')
 @jwt_required()
 def list_users():

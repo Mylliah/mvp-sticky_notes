@@ -26,6 +26,10 @@ def register():
     if not username or not email or not password:
         abort(400, description="Missing username, email or password")
 
+    # Valider la longueur du mot de passe
+    if len(password) < 8:
+        abort(400, description="Password must be at least 8 characters long")
+
     # Valider le format de l'email
     try:
         validation = validate_email(email, check_deliverability=False)
