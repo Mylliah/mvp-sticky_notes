@@ -54,10 +54,11 @@ def create_app(test_config=None):
     # Si une configuration de test est fournie, l'appliquer
     if test_config is not None:
         app.config.update(test_config)
+    
 
-    # check_same_thread est uniquement pour SQLite
-    if "sqlite" in app.config["SQLALCHEMY_DATABASE_URI"]:
-        app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"connect_args": {"check_same_thread": False}})
+    # [NOTE] Cette option 'check_same_thread' est spécifique à SQLite et doit être activée uniquement pour les tests locaux avec SQLite.
+    # Elle provoque une erreur avec PostgreSQL ou d'autres SGBD. Décommentez la ligne ci-dessous uniquement si vous utilisez SQLite pour les tests :
+    # app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"connect_args": {"check_same_thread": False}})
 
     # Initialisation des extensions
     db.init_app(app)
