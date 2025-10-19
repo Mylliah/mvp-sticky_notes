@@ -507,10 +507,12 @@ class TestNotesRoutes:
             db.session.add_all([note1, note2])
             db.session.commit()
             
-            # Assigner note2 à user1
+            # Assigner note1 à user2 (note créée ET assignée)
+            # Assigner note2 à user1 (note reçue)
             from app.models import Assignment
-            assignment = Assignment(note_id=note2.id, user_id=user_id)
-            db.session.add(assignment)
+            assignment1 = Assignment(note_id=note1.id, user_id=user2.id)
+            assignment2 = Assignment(note_id=note2.id, user_id=user_id)
+            db.session.add_all([assignment1, assignment2])
             db.session.commit()
             
             response = client.get('/v1/notes?filter=sent',
@@ -519,6 +521,7 @@ class TestNotesRoutes:
             
             assert response.status_code == 200
             data = response.get_json()
+            # filter=sent retourne les notes créées ET assignées par user1
             assert len(data['notes']) == 1
             assert data['notes'][0]['content'] == 'Sent note'
 

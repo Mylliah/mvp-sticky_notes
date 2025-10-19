@@ -97,14 +97,16 @@ def get_notes():
                 Assignment.is_read == False
             )
         elif filter_param == 'received':
-            # Notes assignées à l'utilisateur (pas créées par lui)
+            # Notes assignées à l'utilisateur (y compris auto-assignations)
             query = query.filter(
-                Assignment.user_id == current_user_id,
-                Note.creator_id != current_user_id
+                Assignment.user_id == current_user_id
             )
         elif filter_param == 'sent':
-            # Notes créées par l'utilisateur
-            query = query.filter(Note.creator_id == current_user_id)
+            # Notes créées ET assignées à quelqu'un
+            query = query.filter(
+                Note.creator_id == current_user_id,
+                Assignment.id.isnot(None)  # Doit avoir au moins 1 assignation
+            )
     
     # Tri
     sort_param = request.args.get('sort', 'date_desc')
