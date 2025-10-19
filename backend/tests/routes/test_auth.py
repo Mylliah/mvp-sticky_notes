@@ -138,20 +138,17 @@ class TestAuthRoutes:
     def test_login_success(self, client, app):
         """Login réussi avec credentials valides."""
         with app.app_context():
-            # Créer un utilisateur
-            from werkzeug.security import generate_password_hash
-            user = User(
-                username='loginuser',
-                email='login@test.com',
-                password_hash=generate_password_hash('mypassword')
-            )
-            db.session.add(user)
-            db.session.commit()
-            
-            # Tenter de se connecter
-            response = client.post('/v1/auth/login', json={
+            # Créer un utilisateur via l'API register
+            client.post('/v1/auth/register', json={
                 'username': 'loginuser',
-                'password': 'mypassword'
+                'email': 'loginuser@test.com',
+                'password': 'password123'
+            })
+            
+            # Se connecter avec email
+            response = client.post('/v1/auth/login', json={
+                'email': 'loginuser@test.com',
+                'password': 'password123'
             })
             
             assert response.status_code == 200
@@ -176,7 +173,7 @@ class TestAuthRoutes:
             
             # Tenter de se connecter avec mauvais password
             response = client.post('/v1/auth/login', json={
-                'username': 'testuser',
+                'email': 'test@test.com',
                 'password': 'wrongpassword'
             })
             
@@ -188,7 +185,7 @@ class TestAuthRoutes:
         """Login échoue si utilisateur n'existe pas."""
         with app.app_context():
             response = client.post('/v1/auth/login', json={
-                'username': 'nonexistent',
+                'email': 'nonexistent@test.com',
                 'password': 'password123'
             })
             
@@ -197,25 +194,25 @@ class TestAuthRoutes:
 
     @pytest.mark.integration
     def test_login_missing_username(self, client, app):
-        """Login échoue si username manquant."""
+        """Login échoue si email manquant."""
         with app.app_context():
             response = client.post('/v1/auth/login', json={
                 'password': 'password123'
             })
             
             assert response.status_code == 400
-            assert 'Missing username or password' in get_error_message(response)
+            assert 'Missing email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_missing_password(self, client, app):
         """Login échoue si password manquant."""
         with app.app_context():
             response = client.post('/v1/auth/login', json={
-                'username': 'testuser'
+                'email': 'test@test.com'
             })
             
             assert response.status_code == 400
-            assert 'Missing username or password' in get_error_message(response)
+            assert 'Missing email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_empty_json(self, client, app):
@@ -224,7 +221,7 @@ class TestAuthRoutes:
             response = client.post('/v1/auth/login', json={})
             
             assert response.status_code == 400
-            assert 'Missing username or password' in get_error_message(response)
+            assert 'Missing email or password' in get_error_message(response)
 
     @pytest.mark.integration
     def test_login_no_json(self, client, app):
@@ -248,9 +245,9 @@ class TestAuthRoutes:
             db.session.add(user)
             db.session.commit()
             
-            # Login
+            # Login avec email
             response = client.post('/v1/auth/login', json={
-                'username': 'jwtuser',
+                'email': 'jwt@test.com',
                 'password': 'password123'
             })
             
@@ -277,9 +274,9 @@ class TestAuthRoutes:
             
             assert register_response.status_code == 201
             
-            # 2. Login avec les mêmes credentials
+            # 2. Login avec email
             login_response = client.post('/v1/auth/login', json={
-                'username': 'workflowuser',
+                'email': 'workflow@test.com',
                 'password': 'mypassword123'
             })
             

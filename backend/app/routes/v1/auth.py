@@ -45,11 +45,15 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    # Génère un token JWT pour login automatique
+    access_token = create_access_token(identity=str(user.id))
+
     return {
         "msg": "User created successfully",
         "id": user.id,
         "username": user.username,
-        "email": user.email
+        "email": user.email,
+        "access_token": access_token
     }, 201
 
 
@@ -58,15 +62,17 @@ def register():
 def login():
     """
     Endpoint pour authentifier l'utilisateur et générer un JWT.
+    Accepte uniquement email + password.
     """
     data = request.get_json()
-    username = data.get("username")
+    email = data.get("email")
     password = data.get("password")
 
-    if not username or not password:
-        abort(400, description="Missing username or password")
+    if not email or not password:
+        abort(400, description="Missing email or password")
 
-    user = User.query.filter_by(username=username).first()
+    # Cherche par email uniquement
+    user = User.query.filter_by(email=email).first()
 
     if not user or not check_password_hash(user.password_hash, password):
         abort(401, description="Invalid credentials")
