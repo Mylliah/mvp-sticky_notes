@@ -1,18 +1,20 @@
 """
-Routes pour la gestion des logs d'actions.
+Routes pour la gestion des logs d'actions (admin uniquement).
 """
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timezone
 from ... import db
 from ...models import ActionLog, User
+from ...decorators import admin_required
 
 bp = Blueprint('action_logs', __name__)
 
 @bp.post('/action_logs')
 @jwt_required()
+@admin_required()
 def create_action_log():
-    """Créer un nouveau log d'action (authentification requise)."""
+    """Créer un nouveau log d'action (admin uniquement)."""
     data = request.get_json()
     if not data or not data.get("user_id") or not data.get("action_type"):
         abort(400, description="Missing user_id or action_type")
@@ -40,8 +42,9 @@ def create_action_log():
 
 @bp.get('/action_logs')
 @jwt_required()
+@admin_required()
 def list_action_logs():
-    """Lister tous les logs d'actions (authentification requise)."""
+    """Lister tous les logs d'actions (admin uniquement)."""
     # Pagination pour éviter de surcharger
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
@@ -71,15 +74,10 @@ def list_action_logs():
 
 @bp.get('/action_logs/<int:log_id>')
 @jwt_required()
+@admin_required()
 def get_action_log(log_id):
-    """Récupérer un log d'action par son ID (authentification requise)."""
+    """Récupérer un log d'action par son ID (admin uniquement)."""
     action_log = ActionLog.query.get_or_404(log_id)
-    current_user_id = int(get_jwt_identity())
-    
-    # Vérifier que l'utilisateur est bien le propriétaire du log
-    if action_log.user_id != current_user_id:
-        abort(403, description="You can only view your own action logs")
-    
     return action_log.to_dict()
 
 # NOTE: Route DELETE supprimée volontairement pour garantir l'immuabilité des logs (traçabilité)
@@ -87,8 +85,9 @@ def get_action_log(log_id):
 
 @bp.get('/action_logs/stats')
 @jwt_required()
+@admin_required()
 def get_action_log_stats():
-    """Récupérer des statistiques sur les actions (authentification requise)."""
+    """Récupérer des statistiques sur les actions (admin uniquement)."""
     from sqlalchemy import func
     
     # Compter les actions par type
