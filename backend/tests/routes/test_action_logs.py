@@ -1,5 +1,8 @@
 """
-Tests pour les routes de gestion des logs d'actions.
+Tests pour les routes de consultation des logs d'actions (lecture seule).
+
+Les logs sont créés automatiquement par le système, donc ces tests
+se concentrent uniquement sur la lecture et les statistiques.
 """
 import pytest
 from datetime import datetime, timezone
@@ -45,108 +48,9 @@ def get_error_message(response):
 
 
 class TestActionLogsRoutes:
-    """Tests pour les endpoints de logs d'actions."""
+    """Tests pour les endpoints de consultation des logs d'actions (lecture seule)."""
 
-    # === POST /action_logs - Créer un log d'action ===
-
-    @pytest.mark.integration
-    def test_create_action_log_success(self, client, app, user, admin_token):
-        """Créer un log d'action avec succès (admin only)."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'user_id': user.id,
-                'action_type': 'CREATE',
-                'target_id': 1
-            }, headers=headers)
-            
-            assert response.status_code == 201
-            data = response.get_json()
-            assert data['user_id'] == user.id
-            assert data['action_type'] == 'CREATE'
-            assert data['target_id'] == 1
-            assert data['timestamp'] is not None
-
-    @pytest.mark.integration
-    def test_create_action_log_with_all_fields(self, client, app, user, admin_token):
-        """Créer un log d'action avec tous les champs (admin only)."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'user_id': user.id,
-                'action_type': 'UPDATE',
-                'target_id': 123,
-                'payload': 'Updated note content'
-            }, headers=headers)
-            
-            assert response.status_code == 201
-            data = response.get_json()
-            assert data['action_type'] == 'UPDATE'
-            assert data['target_id'] == 123
-            assert data['payload'] == 'Updated note content'
-
-    @pytest.mark.integration
-    def test_create_action_log_missing_user_id(self, client, app, admin_token):
-        """Créer un log sans user_id échoue."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'action_type': 'CREATE',
-                'target_id': 1
-            }, headers=headers)
-            
-            assert response.status_code == 400
-            message = get_error_message(response)
-            assert 'user_id' in message.lower()
-
-    @pytest.mark.integration
-    def test_create_action_log_missing_action_type(self, client, app, user, admin_token):
-        """Créer un log sans action_type échoue."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'user_id': user.id,
-                'target_id': 1
-            }, headers=headers)
-            
-            assert response.status_code == 400
-            message = get_error_message(response)
-            assert 'action_type' in message.lower()
-    
-    @pytest.mark.integration
-    def test_create_action_log_missing_target_id(self, client, app, user, admin_token):
-        """Créer un log sans target_id échoue."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'user_id': user.id,
-                'action_type': 'CREATE'
-            }, headers=headers)
-            
-            assert response.status_code == 400
-            message = get_error_message(response)
-            assert 'target_id' in message.lower()
-
-    @pytest.mark.integration
-    def test_create_action_log_user_not_found(self, client, app, admin_token):
-        """Créer un log avec utilisateur inexistant échoue."""
-        headers = {'Authorization': f'Bearer {admin_token}'}
-        
-        with app.app_context():
-            response = client.post('/v1/action_logs', json={
-                'user_id': 99999,
-                'action_type': 'CREATE',
-                'target_id': 1
-            }, headers=headers)
-            
-            assert response.status_code == 400
-            message = get_error_message(response)
-            assert 'User not found' in message
+    # NOTE: Pas de tests POST/PUT/DELETE - Les logs sont IMMUABLES et créés automatiquement
 
     # === GET /action_logs - Lister les logs d'actions ===
 
@@ -282,9 +186,6 @@ class TestActionLogsRoutes:
             response = client.get('/v1/action_logs/99999', headers=headers)
             
             assert response.status_code == 404
-
-    # NOTE: Tests de suppression des logs supprimés car route DELETE /action_logs/<id>
-    # a été retirée volontairement pour garantir l'immuabilité des logs (traçabilité)
 
     # === GET /action_logs/stats - Récupérer les statistiques ===
 

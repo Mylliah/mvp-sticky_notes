@@ -1,6 +1,9 @@
 """
 Tests de sécurité pour les routes Action Logs.
-Vérifie que seuls les admins peuvent accéder aux logs.
+Vérifie que seuls les admins peuvent CONSULTER les logs (lecture seule).
+
+Les logs sont créés automatiquement par le système, donc ces tests
+vérifient uniquement les permissions de lecture.
 """
 import pytest
 from flask_jwt_extended import create_access_token
@@ -9,7 +12,7 @@ from app import db
 
 
 class TestActionLogsAdminOnly:
-    """Tests pour vérifier que seuls les admins peuvent accéder aux action logs."""
+    """Tests pour vérifier que seuls les admins peuvent CONSULTER les action logs (lecture seule)."""
     
     def test_non_admin_cannot_list_action_logs(self, client, app):
         """Un utilisateur non-admin ne peut pas lister les action logs."""
@@ -127,60 +130,8 @@ class TestActionLogsAdminOnly:
             assert data['id'] == log_id
             assert data['action_type'] == 'test_action'
     
-    def test_non_admin_cannot_create_log(self, client, app):
-        """Un utilisateur non-admin ne peut pas créer un log manuellement."""
-        with app.app_context():
-            # Créer utilisateur normal
-            user = User(username="charlie", email="charlie@test.com", password_hash="hash", role="user")
-            db.session.add(user)
-            db.session.commit()
-            user_id = user.id
-            
-            # Token utilisateur normal
-            token = create_access_token(identity=str(user_id))
-            
-            # Tenter de créer un log
-            response = client.post(
-                '/v1/action_logs',
-                headers={'Authorization': f'Bearer {token}'},
-                json={
-                    'user_id': user_id,
-                    'action_type': 'manual_action',
-                    'target_id': 1,
-                    'payload': '{}'
-                }
-            )
-            
-            assert response.status_code == 403
-            assert b'Admin access required' in response.data
-    
-    def test_admin_can_create_log(self, client, app):
-        """Un admin peut créer un log manuellement."""
-        with app.app_context():
-            # Créer admin
-            admin = User(username="admin3", email="admin3@test.com", password_hash="hash", role="admin")
-            db.session.add(admin)
-            db.session.commit()
-            admin_id = admin.id
-            
-            # Token admin
-            token = create_access_token(identity=str(admin_id))
-            
-            # Créer un log
-            response = client.post(
-                '/v1/action_logs',
-                headers={'Authorization': f'Bearer {token}'},
-                json={
-                    'user_id': admin_id,
-                    'action_type': 'manual_action',
-                    'target_id': 1,
-                    'payload': '{"manual": true}'
-                }
-            )
-            
-            assert response.status_code == 201
-            data = response.json
-            assert data['action_type'] == 'manual_action'
+    # NOTE: Tests de création manuelle supprimés - Les logs sont créés automatiquement
+    # par le système et sont IMMUABLES (pas de POST/PUT/DELETE)
     
     def test_non_admin_cannot_get_stats(self, client, app):
         """Un utilisateur non-admin ne peut pas accéder aux stats."""
