@@ -13,6 +13,23 @@ services:
       db:
         condition: service_healthy
 
+  # Frontend React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Évite d'écraser node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    stdin_open: true  # Nécessaire pour Vite
+    tty: true
+
   # DB PostgreSQL
   db:
     image: postgres:16
