@@ -1,44 +1,19 @@
 """
-Routes pour la gestion des logs d'actions (admin uniquement).
+Routes pour la consultation des logs d'actions (admin uniquement, lecture seule).
+
+Les logs sont créés automatiquement par le système lors des actions utilisateurs.
+Aucune création/modification/suppression manuelle n'est permise pour garantir l'intégrité de l'audit.
 """
-from flask import Blueprint, request, abort
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime, timezone
+from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 from ... import db
-from ...models import ActionLog, User
+from ...models import ActionLog
 from ...decorators import admin_required
 
 bp = Blueprint('action_logs', __name__)
 
-@bp.post('/action_logs')
-@jwt_required()
-@admin_required()
-def create_action_log():
-    """Créer un nouveau log d'action (admin uniquement)."""
-    data = request.get_json()
-    if not data or not data.get("user_id") or not data.get("action_type"):
-        abort(400, description="Missing user_id or action_type")
-        
-    # Vérifier que l'utilisateur existe
-    # Utiliser Session.get() (db.session.get) pour éviter l'API dépréciée Query.get()
-    user = db.session.get(User, data["user_id"])
-    if not user:
-        abort(400, description="User not found")
-    
-    # target_id est obligatoire
-    if not data.get("target_id"):
-        abort(400, description="Missing target_id")
-        
-    action_log = ActionLog(
-        user_id=data["user_id"],
-        action_type=data["action_type"],
-        target_id=data["target_id"],
-        payload=data.get("payload"),
-        timestamp=datetime.now(timezone.utc)
-    )
-    db.session.add(action_log)
-    db.session.commit()
-    return action_log.to_dict(), 201
+# NOTE: Pas de route POST/PUT/DELETE - Les logs sont IMMUABLES et créés automatiquement
+# par le système lors des actions (auth, notes, contacts, assignments, etc.)
 
 @bp.get('/action_logs')
 @jwt_required()
