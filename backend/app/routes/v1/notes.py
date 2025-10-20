@@ -169,6 +169,13 @@ def get_note(note_id):
         # CRÉATEUR : voir tous les destinataires et leurs statuts
         all_assignments = Assignment.query.filter_by(note_id=note_id).all()
         
+        # Infos de traçabilité de suppression (visible par CRÉATEUR uniquement)
+        if note.deleted_by:
+            from ...models import User
+            deleter = User.query.get(note.deleted_by)
+            response["deleted_by_username"] = deleter.username if deleter else None
+            response["deleted_by_id"] = note.deleted_by
+        
         # Liste des usernames qui ont lu
         response["read_by"] = [
             a.user.username for a in all_assignments if a.is_read and a.user
