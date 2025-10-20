@@ -171,20 +171,8 @@ class TestNoteCollaborationWorkflows:
             assignment_check = response.get_json()
             assert assignment_check['is_read'] is True
             
-            # 10. Vérifier qu'il y a des action_logs pour les utilisateurs
-            response = client.get(f'/v1/action_logs?user_id={alice_id}',
-                headers={'Authorization': f'Bearer {token_alice}'}
-            )
-            assert response.status_code == 200
-            alice_logs = response.get_json()
-            assert alice_logs['total'] >= 0  # Alice a fait des actions
-            
-            response = client.get(f'/v1/action_logs?user_id={bob_id}',
-                headers={'Authorization': f'Bearer {token_alice}'}
-            )
-            assert response.status_code == 200
-            bob_logs = response.get_json()
-            assert bob_logs['total'] >= 0  # Bob a fait des actions
+            # NOTE: Vérification des action_logs supprimée car ces routes sont
+            # maintenant réservées aux admins uniquement (@admin_required)
 
     @pytest.mark.e2e
     def test_note_lifecycle_complete(self, client, app):

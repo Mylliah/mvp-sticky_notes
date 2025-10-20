@@ -277,42 +277,6 @@ class TestAssignmentsIsolation:
         assert b"Only the creator" in response.data
 
 
-class TestActionLogsIsolation:
-    """Tests d'isolation pour les action logs."""
-    
-    def test_cannot_view_other_user_log(self, client, app):
-        """Un utilisateur ne peut pas voir les logs d'un autre."""
-        user1 = User(username="alice", email="alice@test.com", password_hash="hash1")
-        user2 = User(username="bob", email="bob@test.com", password_hash="hash2")
-        db.session.add_all([user1, user2])
-        db.session.commit()
-        
-        log = ActionLog(user_id=user1.id, action_type="login", target_id=1)
-        db.session.add(log)
-        db.session.commit()
-        
-        token_bob = create_access_token(identity=str(user2.id))
-        response = client.get(f'/v1/action_logs/{log.id}',
-                             headers={"Authorization": f"Bearer {token_bob}"})
-        
-        assert response.status_code == 403
-        assert b"your own action logs" in response.data
-    
-    # NOTE: Test de suppression des logs supprimé car route DELETE /action_logs/<id> 
-    # a été retirée pour garantir l'immuabilité des logs (traçabilité)
-    
-    def test_owner_can_view_own_log(self, client, app):
-        """Le propriétaire peut voir son propre log."""
-        user1 = User(username="alice", email="alice@test.com", password_hash="hash1")
-        db.session.add(user1)
-        db.session.commit()
-        
-        log = ActionLog(user_id=user1.id, action_type="login", target_id=1)
-        db.session.add(log)
-        db.session.commit()
-        
-        token = create_access_token(identity=str(user1.id))
-        response = client.get(f'/v1/action_logs/{log.id}',
-                             headers={"Authorization": f"Bearer {token}"})
-        
-        assert response.status_code == 200
+# NOTE: Tests d'isolation pour Action Logs supprimés.
+# Les action logs sont maintenant réservés aux admins uniquement (@admin_required).
+# Voir tests/routes/test_action_logs_security.py pour les tests de sécurité admin-only.
