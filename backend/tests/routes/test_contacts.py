@@ -471,3 +471,283 @@ class TestContactsRoutes:
             response = client.delete('/v1/contacts/99999', headers=headers)
             
             assert response.status_code == 404
+
+    # === GET /contacts/<id>/notes - Notes échangées avec un contact ===
+
+    @pytest.mark.integration
+    def test_get_contact_notes_sent_and_received(self, client, app):
+        """Récupère toutes les notes échangées avec un contact (envoyées et reçues)."""
+        from app.models import Note, Assignment
+        
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            # Alice ajoute Bob comme contact
+            contact = Contact(
+                user_id=user1_id,
+                contact_user_id=user2_id,
+                nickname='Bob'
+            )
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Alice crée une note et l'assigne à Bob
+            note1 = Note(content='Note from Alice to Bob', creator_id=user1_id)
+            db.session.add(note1)
+            db.session.commit()
+            
+            assign1 = Assignment(note_id=note1.id, user_id=user2_id)
+            db.session.add(assign1)
+            db.session.commit()
+            
+            # Bob crée une note et l'assigne à Alice
+            note2 = Note(content='Note from Bob to Alice', creator_id=user2_id)
+            db.session.add(note2)
+            db.session.commit()
+            
+            assign2 = Assignment(note_id=note2.id, user_id=user1_id)
+            db.session.add(assign2)
+            db.session.commit()
+            
+            # Alice récupère les notes échangées avec Bob
+            response = client.get(f'/v1/contacts/{contact_id}/notes', 
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            # Vérifier la structure
+            assert 'contact' in data
+            assert 'notes' in data
+            assert 'total' in data
+            
+            # Vérifier les infos du contact
+            assert data['contact']['nickname'] == 'Bob'
+            assert data['contact']['contact_user_id'] == user2_id
+            
+            # Vérifier qu'on a bien 2 notes
+            assert data['total'] == 2
+            assert len(data['notes']) == 2
+            
+            # Vérifier le contenu des notes (ordre décroissant par date)
+            note_contents = [n['content'] for n in data['notes']]
+            assert 'Note from Alice to Bob' in note_contents
+            assert 'Note from Bob to Alice' in note_contents
+
+    @pytest.mark.integration
+    def test_get_contact_notes_filter_sent(self, client, app):
+        """Filtre pour voir uniquement les notes envoyées à un contact."""
+        from app.models import Note, Assignment
+        
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            # Alice ajoute Bob comme contact
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Alice envoie à Bob
+            note1 = Note(content='Alice to Bob', creator_id=user1_id)
+            db.session.add(note1)
+            db.session.commit()
+            db.session.add(Assignment(note_id=note1.id, user_id=user2_id))
+            
+            # Bob envoie à Alice
+            note2 = Note(content='Bob to Alice', creator_id=user2_id)
+            db.session.add(note2)
+            db.session.commit()
+            db.session.add(Assignment(note_id=note2.id, user_id=user1_id))
+            db.session.commit()
+            
+            # Alice filtre pour voir uniquement ses notes envoyées
+            response = client.get(f'/v1/contacts/{contact_id}/notes?filter=sent',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            # Doit avoir seulement 1 note (celle d'Alice à Bob)
+            assert data['total'] == 1
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Alice to Bob'
+            assert data['notes'][0]['creator_id'] == user1_id
+
+    @pytest.mark.integration
+    def test_get_contact_notes_filter_received(self, client, app):
+        """Filtre pour voir uniquement les notes reçues d'un contact."""
+        from app.models import Note, Assignment
+        
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Alice envoie à Bob
+            note1 = Note(content='Alice to Bob', creator_id=user1_id)
+            db.session.add(note1)
+            db.session.commit()
+            db.session.add(Assignment(note_id=note1.id, user_id=user2_id))
+            
+            # Bob envoie à Alice
+            note2 = Note(content='Bob to Alice', creator_id=user2_id)
+            db.session.add(note2)
+            db.session.commit()
+            db.session.add(Assignment(note_id=note2.id, user_id=user1_id))
+            db.session.commit()
+            
+            # Alice filtre pour voir uniquement les notes reçues de Bob
+            response = client.get(f'/v1/contacts/{contact_id}/notes?filter=received',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            # Doit avoir seulement 1 note (celle de Bob à Alice)
+            assert data['total'] == 1
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Bob to Alice'
+            assert data['notes'][0]['creator_id'] == user2_id
+
+    @pytest.mark.integration
+    def test_get_contact_notes_filter_unread(self, client, app):
+        """Filtre pour voir uniquement les notes non lues d'un contact."""
+        from app.models import Note, Assignment
+        
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Bob envoie 2 notes à Alice
+            note1 = Note(content='Unread note', creator_id=user2_id)
+            note2 = Note(content='Read note', creator_id=user2_id)
+            db.session.add_all([note1, note2])
+            db.session.commit()
+            
+            assign1 = Assignment(note_id=note1.id, user_id=user1_id, is_read=False)
+            assign2 = Assignment(note_id=note2.id, user_id=user1_id, is_read=True)
+            db.session.add_all([assign1, assign2])
+            db.session.commit()
+            
+            # Alice filtre pour voir uniquement les notes non lues de Bob
+            response = client.get(f'/v1/contacts/{contact_id}/notes?filter=unread',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            # Doit avoir seulement 1 note (la non lue)
+            assert data['total'] == 1
+            assert len(data['notes']) == 1
+            assert data['notes'][0]['content'] == 'Unread note'
+
+    @pytest.mark.integration
+    def test_get_contact_notes_pagination(self, client, app):
+        """Pagination fonctionne sur les notes d'un contact."""
+        from app.models import Note, Assignment
+        
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Alice crée 5 notes pour Bob
+            for i in range(5):
+                note = Note(content=f'Note {i}', creator_id=user1_id)
+                db.session.add(note)
+                db.session.commit()
+                db.session.add(Assignment(note_id=note.id, user_id=user2_id))
+            db.session.commit()
+            
+            # Récupérer page 1 avec 2 notes par page
+            response = client.get(f'/v1/contacts/{contact_id}/notes?page=1&per_page=2',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            assert data['total'] == 5
+            assert len(data['notes']) == 2
+            assert data['page'] == 1
+            assert data['per_page'] == 2
+            assert data['pages'] == 3
+            assert data['has_next'] is True
+            assert data['has_prev'] is False
+
+    @pytest.mark.integration
+    def test_get_contact_notes_empty(self, client, app):
+        """Aucune note échangée avec un contact retourne une liste vide."""
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        
+        with app.app_context():
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            response = client.get(f'/v1/contacts/{contact_id}/notes',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            
+            assert data['total'] == 0
+            assert len(data['notes']) == 0
+
+    @pytest.mark.integration
+    def test_get_contact_notes_forbidden_not_own_contact(self, client, app):
+        """Impossible de voir les notes d'un contact qui n'appartient pas à l'utilisateur."""
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        token2, user2_id = create_user_and_login(client, app, 'bob', 'bob@test.com', 'pass2')
+        token3, user3_id = create_user_and_login(client, app, 'charlie', 'charlie@test.com', 'pass3')
+        
+        with app.app_context():
+            # Alice crée un contact avec Bob
+            contact = Contact(user_id=user1_id, contact_user_id=user2_id, nickname='Bob')
+            db.session.add(contact)
+            db.session.commit()
+            contact_id = contact.id
+            
+            # Charlie essaie d'accéder aux notes du contact d'Alice
+            response = client.get(f'/v1/contacts/{contact_id}/notes',
+                headers={'Authorization': f'Bearer {token3}'})
+            
+            assert response.status_code == 403
+            assert 'You can only view notes for your own contacts' in get_error_message(response)
+
+    @pytest.mark.integration
+    def test_get_contact_notes_not_found(self, client, app):
+        """Contact inexistant retourne 404."""
+        token1, user1_id = create_user_and_login(client, app, 'alice', 'alice@test.com', 'pass1')
+        
+        with app.app_context():
+            response = client.get('/v1/contacts/99999/notes',
+                headers={'Authorization': f'Bearer {token1}'})
+            
+            assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_get_contact_notes_requires_auth(self, client, app):
+        """GET /contacts/<id>/notes nécessite une authentification."""
+        with app.app_context():
+            response = client.get('/v1/contacts/1/notes')
+            
+            assert response.status_code == 401

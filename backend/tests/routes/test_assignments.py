@@ -483,3 +483,132 @@ class TestAssignmentsRoutes:
             # L'utilisateur connecté ne voit que sa propre assignation
             assert data['count'] == 1
             assert data['assignments'][0]['user_id'] == user.id
+
+    # === PUT /assignments/<id>/status - Changer le statut personnel ===
+
+    @pytest.mark.integration
+    def test_update_status_to_termine(self, client, app, user, auth_token, note):
+        """Changer le statut à 'terminé' avec succès."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            assignment = Assignment(note_id=note.id, user_id=user.id, recipient_status='en_cours')
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            response = client.put(f'/v1/assignments/{assignment_id}/status', json={
+                'recipient_status': 'terminé'
+            }, headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['recipient_status'] == 'terminé'
+            assert data['finished_date'] is not None
+
+    @pytest.mark.integration
+    def test_update_status_to_en_cours(self, client, app, user, auth_token, note):
+        """Changer le statut à 'en_cours' remet finished_date à None."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            from datetime import datetime, timezone
+            assignment = Assignment(
+                note_id=note.id,
+                user_id=user.id,
+                recipient_status='terminé',
+                finished_date=datetime.now(timezone.utc)
+            )
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            response = client.put(f'/v1/assignments/{assignment_id}/status', json={
+                'recipient_status': 'en_cours'
+            }, headers=headers)
+            
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['recipient_status'] == 'en_cours'
+            assert data['finished_date'] is None
+
+    @pytest.mark.integration
+    def test_update_status_invalid_status(self, client, app, user, auth_token, note):
+        """Changer avec un statut invalide échoue."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            assignment = Assignment(note_id=note.id, user_id=user.id)
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            response = client.put(f'/v1/assignments/{assignment_id}/status', json={
+                'recipient_status': 'invalid_status'
+            }, headers=headers)
+            
+            assert response.status_code == 400
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'Invalid status' in message
+
+    @pytest.mark.integration
+    def test_update_status_missing_status(self, client, app, user, auth_token, note):
+        """Changer le statut sans fournir recipient_status échoue."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            assignment = Assignment(note_id=note.id, user_id=user.id)
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            response = client.put(f'/v1/assignments/{assignment_id}/status', json={}, headers=headers)
+            
+            assert response.status_code == 400
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'Missing recipient_status' in message
+
+    @pytest.mark.integration
+    def test_update_status_forbidden_not_recipient(self, client, app, user, auth_token, note):
+        """Un utilisateur ne peut pas changer le statut d'une assignation qui ne lui appartient pas."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            # Créer un autre utilisateur
+            other_user = User(
+                username='otheruser2',
+                email='other2@test.com',
+                password_hash=generate_password_hash('password')
+            )
+            db.session.add(other_user)
+            db.session.commit()
+            
+            # Créer une assignation pour l'autre utilisateur
+            assignment = Assignment(note_id=note.id, user_id=other_user.id)
+            db.session.add(assignment)
+            db.session.commit()
+            assignment_id = assignment.id
+            
+            # Essayer de changer le statut
+            response = client.put(f'/v1/assignments/{assignment_id}/status', json={
+                'recipient_status': 'terminé'
+            }, headers=headers)
+            
+            assert response.status_code == 403
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'only update status on your own assignments' in message.lower()
+
+    @pytest.mark.integration
+    def test_update_status_not_found(self, client, app, auth_token):
+        """Changer le statut d'une assignation inexistante retourne 404."""
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        
+        with app.app_context():
+            response = client.put('/v1/assignments/99999/status', json={
+                'recipient_status': 'terminé'
+            }, headers=headers)
+            
+            assert response.status_code == 404
