@@ -253,3 +253,30 @@ def authenticated_headers(client, sample_user):
         return {'Authorization': f'Bearer {token}'}
     
     return {}
+
+
+@pytest.fixture
+def auth_headers(app, user):
+    """Créer des headers d'authentification avec token JWT."""
+    with app.app_context():
+        token = create_access_token(identity=str(user.id))
+        return {'Authorization': f'Bearer {token}'}
+
+
+@pytest.fixture
+def test_user(client):
+    """Créer un utilisateur et retourner ses infos avec token."""
+    user_data = {
+        "username": "testuser_search",
+        "email": "testsearch@example.com",
+        "password": "testpass123"
+    }
+    response = client.post('/v1/auth/register', json=user_data)
+    data = response.get_json()
+    
+    return {
+        "id": data["id"],
+        "username": data["username"],
+        "email": data["email"],
+        "token": data["access_token"]
+    }

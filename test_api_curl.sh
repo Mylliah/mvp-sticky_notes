@@ -34,7 +34,7 @@ test_endpoint() {
 # ================================================
 # 1. AUTHENTIFICATION
 # ================================================
-section "🔐 1. AUTHENTIFICATION (2 endpoints)"
+section "🔐 1. AUTHENTIFICATION (4 endpoints)"
 
 test_endpoint "1.1 POST /auth/register - Créer testuser2" \
     "POST $BASE_URL/auth/register"
@@ -64,10 +64,24 @@ echo "$LOGIN_RESPONSE" | python3 -m json.tool
 TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
 echo -e "\n${GREEN}Token testuser1 sauvegardé!${NC}\n"
 
+test_endpoint "1.3 GET /auth/me - Profil utilisateur connecté" \
+    "GET $BASE_URL/auth/me"
+
+curl -s -X GET "$BASE_URL/auth/me" \
+    -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+echo ""
+
+test_endpoint "1.4 POST /auth/logout - Déconnexion avec traçabilité" \
+    "POST $BASE_URL/auth/logout"
+
+curl -s -X POST "$BASE_URL/auth/logout" \
+    -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+echo -e "\n${GREEN}Déconnexion réussie (token toujours valide car JWT stateless)${NC}\n"
+
 # ================================================
 # 2. NOTES
 # ================================================
-section "📝 2. NOTES (10 endpoints)"
+section "📝 2. NOTES (11 endpoints)"
 
 test_endpoint "2.1 POST /notes - Créer une note" \
     "POST $BASE_URL/notes"
@@ -102,6 +116,13 @@ test_endpoint "2.4 GET /notes?sort=date_asc - Trier par date croissante" \
     "GET $BASE_URL/notes?sort=date_asc"
 
 curl -s -X GET "$BASE_URL/notes?sort=date_asc" \
+    -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+echo ""
+
+test_endpoint "2.4.1 GET /notes?q=test - Recherche textuelle (MUST HAVE)" \
+    "GET $BASE_URL/notes?q=test"
+
+curl -s -X GET "$BASE_URL/notes?q=test" \
     -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 echo ""
 
@@ -211,12 +232,19 @@ if [ "$CONTACT_ID" != "N/A" ]; then
     curl -s -X GET "$BASE_URL/contacts/$CONTACT_ID" \
         -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
     echo ""
+
+    test_endpoint "3.8 GET /contacts/$CONTACT_ID/notes - Notes partagées avec ce contact" \
+        "GET $BASE_URL/contacts/$CONTACT_ID/notes"
+
+    curl -s -X GET "$BASE_URL/contacts/$CONTACT_ID/notes" \
+        -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+    echo ""
 fi
 
 # ================================================
 # 4. ASSIGNMENTS
 # ================================================
-section "📌 4. ASSIGNMENTS (9 endpoints)"
+section "📌 4. ASSIGNMENTS (12 endpoints)"
 
 test_endpoint "4.1 POST /assignments - Assigner la note à soi-même" \
     "POST $BASE_URL/assignments"
@@ -265,6 +293,24 @@ if [ "$ASSIGNMENT_ID" != "N/A" ]; then
     curl -s -X PUT "$BASE_URL/assignments/$ASSIGNMENT_ID/priority" \
         -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
     echo ""
+
+    test_endpoint "4.2 GET /assignments/$ASSIGNMENT_ID - Détails d'une assignation" \
+        "GET $BASE_URL/assignments/$ASSIGNMENT_ID"
+
+    curl -s -X GET "$BASE_URL/assignments/$ASSIGNMENT_ID" \
+        -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+    echo ""
+
+    test_endpoint "4.5 PUT /assignments/$ASSIGNMENT_ID - Modifier assignation (mark as read)" \
+        "PUT $BASE_URL/assignments/$ASSIGNMENT_ID"
+
+    curl -s -X PUT "$BASE_URL/assignments/$ASSIGNMENT_ID" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "is_read": true
+        }' | python3 -m json.tool
+    echo ""
 fi
 
 test_endpoint "2.9 GET /notes/$NOTE_ID/assignments - Liste assignations (créateur)" \
@@ -273,6 +319,15 @@ test_endpoint "2.9 GET /notes/$NOTE_ID/assignments - Liste assignations (créate
 curl -s -X GET "$BASE_URL/notes/$NOTE_ID/assignments" \
     -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 echo ""
+
+if [ "$ASSIGNMENT_ID" != "N/A" ]; then
+    test_endpoint "4.6 DELETE /assignments/$ASSIGNMENT_ID - Supprimer assignation (undo)" \
+        "DELETE $BASE_URL/assignments/$ASSIGNMENT_ID"
+
+    curl -s -X DELETE "$BASE_URL/assignments/$ASSIGNMENT_ID" \
+        -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+    echo ""
+fi
 
 # ================================================
 # 5. ACTION LOGS
@@ -308,9 +363,9 @@ fi
 # ================================================
 # 6. UTILISATEURS
 # ================================================
-section "👤 6. UTILISATEURS (5 endpoints)"
+section "👤 6. UTILISATEURS (6 endpoints)"
 
-test_endpoint "6.3 GET /users/me - Profil utilisateur connecté (route ajoutée)" \
+test_endpoint "6.3 GET /users/me - Profil utilisateur connecté" \
     "GET $BASE_URL/users/me"
 
 curl -s -X GET "$BASE_URL/users/me" \
@@ -324,10 +379,110 @@ curl -s -X GET "$BASE_URL/users/4" \
     -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 echo ""
 
+test_endpoint "6.4 PUT /users/4 - Modifier profil utilisateur" \
+    "PUT $BASE_URL/users/4"
+
+curl -s -X PUT "$BASE_URL/users/4" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "username": "testuser1_updated",
+        "email": "testuser1@test.com"
+    }' | python3 -m json.tool
+echo ""
+
 # ================================================
-# 7. TESTS DE SÉCURITÉ
+# 7. ADMIN ROUTES
 # ================================================
-section "🔐 7. TESTS DE SÉCURITÉ"
+section "👑 7. ADMIN ROUTES (16 endpoints) - Nécessite token admin"
+
+echo -e "${YELLOW}Note: Ces tests nécessitent un utilisateur avec role='admin'${NC}"
+echo -e "${YELLOW}Pour tester: créer un admin avec PUT /admin/users/{id}/role${NC}\n"
+
+test_endpoint "7.1 GET /admin/stats - Statistiques globales" \
+    "GET $BASE_URL/admin/stats (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/stats -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.2 GET /admin/users - Liste tous les utilisateurs" \
+    "GET $BASE_URL/admin/users (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/users -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.3 DELETE /admin/users/{id} - Supprimer un utilisateur" \
+    "DELETE $BASE_URL/admin/users/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X DELETE $BASE_URL/admin/users/5 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.4 PUT /admin/users/{id}/role - Changer rôle utilisateur" \
+    "PUT $BASE_URL/admin/users/{id}/role (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X PUT $BASE_URL/admin/users/4/role -H 'Authorization: Bearer <ADMIN_TOKEN>' -H 'Content-Type: application/json' -d '{\"role\": \"admin\"}'\n"
+
+test_endpoint "7.5 GET /admin/notes - Liste toutes les notes" \
+    "GET $BASE_URL/admin/notes (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/notes -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.6 GET /admin/notes/{id} - Détails d'une note (admin)" \
+    "GET $BASE_URL/admin/notes/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/notes/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.7 PUT /admin/notes/{id} - Modifier une note (admin)" \
+    "PUT $BASE_URL/admin/notes/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X PUT $BASE_URL/admin/notes/1 -H 'Authorization: Bearer <ADMIN_TOKEN>' -H 'Content-Type: application/json' -d '{\"content\": \"Modified by admin\"}'\n"
+
+test_endpoint "7.8 DELETE /admin/notes/{id} - Supprimer une note (admin)" \
+    "DELETE $BASE_URL/admin/notes/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X DELETE $BASE_URL/admin/notes/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.9 GET /admin/contacts - Liste tous les contacts" \
+    "GET $BASE_URL/admin/contacts (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/contacts -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.10 GET /admin/contacts/{id} - Détails d'un contact (admin)" \
+    "GET $BASE_URL/admin/contacts/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/contacts/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.11 PUT /admin/contacts/{id} - Modifier un contact (admin)" \
+    "PUT $BASE_URL/admin/contacts/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X PUT $BASE_URL/admin/contacts/1 -H 'Authorization: Bearer <ADMIN_TOKEN>' -H 'Content-Type: application/json' -d '{\"nickname\": \"Admin nickname\"}'\n"
+
+test_endpoint "7.12 DELETE /admin/contacts/{id} - Supprimer un contact (admin)" \
+    "DELETE $BASE_URL/admin/contacts/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X DELETE $BASE_URL/admin/contacts/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.13 GET /admin/assignments - Liste toutes les assignations" \
+    "GET $BASE_URL/admin/assignments (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/assignments -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.14 GET /admin/assignments/{id} - Détails assignation (admin)" \
+    "GET $BASE_URL/admin/assignments/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X GET $BASE_URL/admin/assignments/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+test_endpoint "7.15 PUT /admin/assignments/{id} - Modifier assignation (admin)" \
+    "PUT $BASE_URL/admin/assignments/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X PUT $BASE_URL/admin/assignments/1 -H 'Authorization: Bearer <ADMIN_TOKEN>' -H 'Content-Type: application/json' -d '{\"is_read\": true}'\n"
+
+test_endpoint "7.16 DELETE /admin/assignments/{id} - Supprimer assignation (admin)" \
+    "DELETE $BASE_URL/admin/assignments/{id} (requires admin token)"
+
+echo -e "${BLUE}Commande:${NC} curl -X DELETE $BASE_URL/admin/assignments/1 -H 'Authorization: Bearer <ADMIN_TOKEN>'\n"
+
+# ================================================
+# 8. TESTS DE SÉCURITÉ
+# ================================================
+section "🔐 8. TESTS DE SÉCURITÉ"
 
 test_endpoint "8.1 GET /notes sans token (401)" \
     "GET $BASE_URL/notes"
@@ -343,9 +498,9 @@ curl -s -X GET "$BASE_URL/notes" \
 echo ""
 
 # ================================================
-# 8. TESTS DE VALIDATION
+# 9. TESTS DE VALIDATION
 # ================================================
-section "🧪 8. TESTS DE VALIDATION"
+section "🧪 9. TESTS DE VALIDATION"
 
 test_endpoint "9.1 POST /auth/register avec email invalide (400)" \
     "POST $BASE_URL/auth/register"
@@ -383,9 +538,9 @@ curl -s -X POST $BASE_URL/notes \
 echo ""
 
 # ================================================
-# 9. NETTOYAGE (OPTIONNEL)
+# 10. NETTOYAGE (OPTIONNEL)
 # ================================================
-section "🧹 9. NETTOYAGE (soft delete)"
+section "🧹 10. NETTOYAGE (soft delete)"
 
 test_endpoint "2.7 DELETE /notes/$NOTE_ID - Supprimer la note" \
     "DELETE $BASE_URL/notes/$NOTE_ID"
@@ -410,12 +565,13 @@ echo -e "\n${BLUE}=================================================${NC}"
 echo -e "${GREEN}✅ Tests terminés!${NC}"
 echo -e "${BLUE}=================================================${NC}\n"
 echo -e "Total des sections testées:"
-echo -e "  - ${GREEN}✓${NC} Authentification (2 endpoints)"
-echo -e "  - ${GREEN}✓${NC} Notes (10 endpoints)"
-echo -e "  - ${GREEN}✓${NC} Contacts (8 endpoints)"
-echo -e "  - ${GREEN}✓${NC} Assignations (9 endpoints)"
+echo -e "  - ${GREEN}✓${NC} Authentification (4 endpoints)"
+echo -e "  - ${GREEN}✓${NC} Notes (11 endpoints)"
+echo -e "  - ${GREEN}✓${NC} Contacts (9 endpoints)"
+echo -e "  - ${GREEN}✓${NC} Assignations (12 endpoints)"
 echo -e "  - ${GREEN}✓${NC} Action Logs (5 endpoints)"
-echo -e "  - ${GREEN}✓${NC} Utilisateurs (5 endpoints)"
+echo -e "  - ${GREEN}✓${NC} Utilisateurs (6 endpoints)"
+echo -e "  - ${YELLOW}⚠${NC}  Admin Routes (16 endpoints - nécessite token admin)"
 echo -e "  - ${GREEN}✓${NC} Tests de sécurité"
 echo -e "  - ${GREEN}✓${NC} Tests de validation"
-echo -e "\n${YELLOW}Note:${NC} Les routes Admin nécessitent un token admin (non testé ici)\n"
+echo -e "\n${YELLOW}Note:${NC} Total = 63 endpoints documentés (47 testés automatiquement + 16 admin)\n"
