@@ -57,7 +57,7 @@ def get_notes():
     """
     current_user_id = int(get_jwt_identity())
     
-    # Pagination parameters
+    # Paramètres de pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -76,7 +76,8 @@ def get_notes():
         or_(
             Note.creator_id == current_user_id,
             Assignment.user_id == current_user_id
-        )
+        ),
+        Note.delete_date.is_(None)  # Exclure les notes supprimées (soft delete)
     )
     
     # Recherche textuelle
@@ -85,6 +86,16 @@ def get_notes():
         # Recherche insensible à la casse dans le contenu de la note
         search_pattern = f"%{search_query}%"
         query = query.filter(Note.content.ilike(search_pattern))
+    
+    # Filtre par créateur (pour afficher les notes d'un contact spécifique)
+    creator_id = request.args.get('creator_id', type=int)
+    if creator_id is not None:
+        query = query.filter(Note.creator_id == creator_id)
+    
+    # Filtre direct par important (booléen)
+    important_filter = request.args.get('important', type=lambda v: v.lower() == 'true')
+    if important_filter is not None:
+        query = query.filter(Note.important == important_filter)
     
     # Filtres
     filter_param = request.args.get('filter')
@@ -118,7 +129,22 @@ def get_notes():
     
     # Tri
     sort_param = request.args.get('sort', 'date_desc')
-    if sort_param == 'date_asc':
+    sort_by = request.args.get('sort_by')  # Support pour sort_by alternatif
+    sort_order = request.args.get('sort_order', 'desc')  # Support pour sort_order alternatif
+    
+    # Utiliser sort_by/sort_order si fournis, sinon utiliser sort
+    if sort_by:
+        if sort_by == 'created_date':
+            if sort_order == 'asc':
+                query = query.order_by(Note.created_date.asc())
+            else:
+                query = query.order_by(Note.created_date.desc())
+        elif sort_by == 'important':
+            query = query.order_by(Note.important.desc(), Note.created_date.desc())
+        else:
+            # Par défaut : date décroissante
+            query = query.order_by(Note.created_date.desc())
+    elif sort_param == 'date_asc':
         query = query.order_by(Note.created_date.asc())
     elif sort_param == 'date_desc':
         query = query.order_by(Note.created_date.desc())

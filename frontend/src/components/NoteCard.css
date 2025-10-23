@@ -1,0 +1,82 @@
+/* Carte de note */
+.note-card {
+  background-color: #fffacd;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 16px;
+  min-height: 120px;
+}
+
+.note-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.note-card.important {
+  border-left: 4px solid #ff5722;
+}
+
+/* En-tête de la carte */
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #666;
+}
+
+.note-creator {
+  font-weight: 500;
+}
+
+.note-date {
+  font-style: italic;
+}
+
+/* Corps de la note */
+.note-body {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bouton d'édition */
+.note-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.note-card:hover .note-edit-btn {
+  opacity: 1;
+}
+
+.note-edit-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Badge important */
+.important-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-size: 20px;
+}

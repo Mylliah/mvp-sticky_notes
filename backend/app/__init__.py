@@ -17,7 +17,7 @@ migrate = Migrate()
 jwt = JWTManager() # on instancie et on lie à l'app plus bas
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["5000 per day", "500 per hour"],  # Limites augmentées pour le développement
     storage_uri="memory://"
 ) 
 
