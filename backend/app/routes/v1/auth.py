@@ -94,7 +94,15 @@ def login():
 
     access_token = create_access_token(identity=str(user.id))
 
-    return {"access_token": access_token, "username": user.username}
+    return {
+        "access_token": access_token,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role
+        }
+    }
 
 
 @bp.get('/auth/me')

@@ -57,7 +57,7 @@ def get_notes():
     """
     current_user_id = int(get_jwt_identity())
     
-    # Pagination parameters
+    # Paramètres de pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -76,7 +76,8 @@ def get_notes():
         or_(
             Note.creator_id == current_user_id,
             Assignment.user_id == current_user_id
-        )
+        ),
+        Note.delete_date.is_(None)  # Exclure les notes supprimées (soft delete)
     )
     
     # Recherche textuelle
