@@ -3,7 +3,7 @@ Blueprint pour l'authentification.
 """
 import json
 from flask import Blueprint, request, abort
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
 from ... import db, limiter
@@ -95,3 +95,51 @@ def login():
     access_token = create_access_token(identity=str(user.id))
 
     return {"access_token": access_token, "username": user.username}
+
+
+@bp.get('/auth/me')
+@jwt_required()
+def get_me():
+    """
+    Endpoint pour récupérer le profil de l'utilisateur connecté.
+    Utile pour vérifier la validité du token JWT.
+    """
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get_or_404(current_user_id)
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_date": user.created_date.isoformat() if user.created_date else None
+    }, 200
+
+
+@bp.post('/auth/logout')
+@jwt_required()
+def logout():
+    """
+    Endpoint pour déconnecter l'utilisateur.
+    
+    Note: Avec JWT stateless, le token reste valide jusqu'à expiration.
+    Le client doit supprimer le token de son côté.
+    Ce endpoint sert principalement à :
+    - Logger l'action de déconnexion pour l'audit
+    - Informer l'utilisateur que la déconnexion a réussi
+    - Préparer pour une future blacklist de tokens si nécessaire
+    """
+    current_user_id = int(get_jwt_identity())
+    
+    # Log de déconnexion
+    action_log = ActionLog(
+        user_id=current_user_id,
+        action_type="user_logout",
+        target_id=current_user_id,
+        payload=json.dumps({"timestamp": "logout"})
+    )
+    db.session.add(action_log)
+    db.session.commit()
+    
+    return {
+        "msg": "Successfully logged out"
+    }, 200
