@@ -51,6 +51,7 @@ def get_notes():
     Query Parameters:
       - filter: 'important', 'important_by_me', 'unread', 'received', 'sent'
       - sort: 'date_asc', 'date_desc', 'important_first'
+      - q: search query (searches in note content)
       - page: page number (default: 1)
       - per_page: items per page (default: 20, max: 100)
     """
@@ -77,6 +78,13 @@ def get_notes():
             Assignment.user_id == current_user_id
         )
     )
+    
+    # Recherche textuelle
+    search_query = request.args.get('q', '').strip()
+    if search_query:
+        # Recherche insensible à la casse dans le contenu de la note
+        search_pattern = f"%{search_query}%"
+        query = query.filter(Note.content.ilike(search_pattern))
     
     # Filtres
     filter_param = request.args.get('filter')
