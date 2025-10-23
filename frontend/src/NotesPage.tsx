@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
+import { ContactTabs } from './components/ContactTabs';
 import { Note } from './types/note.types';
 import { noteService } from './services/note.service';
 import { authService } from './services/auth.service';
@@ -22,9 +23,19 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filtre par contact
+  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
   // Charger les notes
   const loadNotes = async () => {
+    console.log('[NotesPage] Loading notes with filters:', { 
+      activeFilter, 
+      sortOrder, 
+      searchQuery, 
+      selectedContactId 
+    });
+    
     setLoading(true);
     setError(null);
     
@@ -43,10 +54,18 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         params.q = searchQuery;
       }
 
+      // Filtrer par contact sélectionné
+      if (selectedContactId !== null) {
+        params.creator_id = selectedContactId;
+      }
+
       const data = await noteService.getNotes(params);
+      console.log('[NotesPage] Notes loaded:', data.notes?.length || 0);
       setNotes(data.notes || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur de chargement');
+      console.error('[NotesPage] Error loading notes:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -55,7 +74,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   // Charger les notes au montage et quand les filtres changent
   useEffect(() => {
     loadNotes();
-  }, [activeFilter, sortOrder, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter, sortOrder, searchQuery, selectedContactId]);
 
   const handleNoteCreated = () => {
     setShowEditor(false);
@@ -109,6 +129,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           )}
         </div>
       </header>
+
+      {/* Onglets de contacts */}
+      <ContactTabs
+        selectedContactId={selectedContactId}
+        onSelectContact={setSelectedContactId}
+      />
 
       {/* Barre de filtres */}
       <FilterBar
