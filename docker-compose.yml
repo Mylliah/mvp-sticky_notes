@@ -1,21 +1,4 @@
 services:
-  # Frontend React + Vite
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      target: dev
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:5000
-    depends_on:
-      - backend
-    user: "${UID:-1000}:${GID:-1000}"
-
   # API Flask
   backend:
     build:
@@ -36,6 +19,23 @@ services:
       db:
         condition: service_healthy
     user: "${UID:-1000}:${GID:-1000}"
+
+  # Frontend React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Évite d'écraser node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    stdin_open: true  # Nécessaire pour Vite
+    tty: true
 
   # DB PostgreSQL
   db:
