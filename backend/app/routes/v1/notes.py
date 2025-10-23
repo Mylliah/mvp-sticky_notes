@@ -57,7 +57,11 @@ def get_notes():
     """
     current_user_id = int(get_jwt_identity())
     
+<<<<<<< HEAD
     # Pagination parameters
+=======
+    # Paramètres de pagination
+>>>>>>> a850a8c (Enhance authentication and notes management: add user registration logging, improve email validation, implement JWT token generation on registration, and enhance note retrieval with pagination and filtering options.)
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -76,7 +80,12 @@ def get_notes():
         or_(
             Note.creator_id == current_user_id,
             Assignment.user_id == current_user_id
+<<<<<<< HEAD
         )
+=======
+        ),
+        Note.delete_date.is_(None)  # Exclure les notes supprimées (soft delete)
+>>>>>>> a850a8c (Enhance authentication and notes management: add user registration logging, improve email validation, implement JWT token generation on registration, and enhance note retrieval with pagination and filtering options.)
     )
     
     # Recherche textuelle
