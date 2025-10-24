@@ -94,9 +94,6 @@ def login():
 
     access_token = create_access_token(identity=str(user.id))
 
-<<<<<<< HEAD
-    return {"access_token": access_token, "username": user.username}
-=======
     return {
         "access_token": access_token,
         "user": {
@@ -106,7 +103,6 @@ def login():
             "role": user.role
         }
     }
->>>>>>> a850a8c (Enhance authentication and notes management: add user registration logging, improve email validation, implement JWT token generation on registration, and enhance note retrieval with pagination and filtering options.)
 
 
 @bp.get('/auth/me')
