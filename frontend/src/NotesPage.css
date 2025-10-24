@@ -2,8 +2,15 @@
 .notes-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+}
+
+/* Contenu principal (à droite de la sidebar) */
+.main-content {
+  flex: 1;
+  margin-left: 80px; /* Largeur de la sidebar */
+  margin-right: 220px; /* Espace pour la sidebar de contacts à droite */
   padding: 24px;
-  padding-right: 220px; /* Espace pour la sidebar de contacts à droite */
 }
 
 /* En-tête */
@@ -36,25 +43,6 @@
 .user-name {
   font-size: 16px;
   opacity: 0.9;
-}
-
-.new-note-btn {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.new-note-btn:hover {
-  background-color: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .logout-btn {

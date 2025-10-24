@@ -3,6 +3,7 @@ import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
+import Sidebar from './components/Sidebar';
 import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
 import { noteService } from './services/note.service';
@@ -210,30 +211,37 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   const currentUser = authService.getCurrentUser();
 
+  const handleShowAllNotes = () => {
+    setActiveFilter('all');
+    setSearchQuery('');
+  };
+
   return (
     <div className="notes-page">
-      <header className="notes-header">
-        <div className="header-left">
-          <h1>Mes Notes</h1>
-          {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
-        </div>
-        <div className="header-right">
-          <button
-            className="new-note-btn"
-            onClick={() => {
-              setSelectedNote(null);
-              setShowEditor(true);
-            }}
-          >
-            + Nouvelle Note
-          </button>
-          {onLogout && (
-            <button className="logout-btn" onClick={onLogout}>
-              🚪 Déconnexion
-            </button>
-          )}
-        </div>
-      </header>
+      {/* Sidebar gauche */}
+      <Sidebar 
+        onNewNote={() => {
+          setSelectedNote(null);
+          setShowEditor(true);
+        }}
+        onShowAllNotes={handleShowAllNotes}
+        activeView={activeFilter === 'all' && !searchQuery ? 'all' : 'filtered'}
+      />
+
+      <div className="main-content">
+        <header className="notes-header">
+          <div className="header-left">
+            <h1>Mes Notes</h1>
+            {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
+          </div>
+          <div className="header-right">
+            {onLogout && (
+              <button className="logout-btn" onClick={onLogout}>
+                🚪 Déconnexion
+              </button>
+            )}
+          </div>
+        </header>
 
       {/* Barre de filtres */}
       <FilterBar
@@ -274,7 +282,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         )}
       </div>
 
-      {/* Badges de contacts en bas */}
+      {/* Badges de contacts à droite */}
       <ContactBadges onDrop={handleNoteDrop} />
 
       {/* Toast Container */}
@@ -289,6 +297,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           onClose={() => setShowEditor(false)}
         />
       )}
+      </div> {/* Fermeture de main-content */}
     </div>
   );
 }
