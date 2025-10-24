@@ -85,6 +85,34 @@
   font-style: italic;
 }
 
+/* Section statut de l'assignation */
+.assignment-status {
+  padding: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #4caf50;
+}
+
+.checkbox-label:hover {
+  color: #4caf50;
+}
+
 /* Messages d'erreur et de chargement */
 .error-message {
   color: #d32f2f;
@@ -102,4 +130,106 @@
   padding: 8px;
   margin-top: 8px;
   font-style: italic;
+}
+
+/* Panel d'informations */
+.info-panel {
+  border-top: 2px solid rgba(0, 0, 0, 0.15);
+  margin-top: 16px;
+  padding-top: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.info-panel h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.info-section {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.info-section strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #555;
+}
+
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.assignment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.assignment-user {
+  font-weight: 500;
+  color: #333;
+}
+
+.assignment-status {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.assignment-status.en_cours {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.assignment-status.terminé {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.assignment-read {
+  font-size: 12px;
+  color: #666;
+}
+
+.delete-assignment-btn {
+  background-color: transparent;
+  border: 1px solid #d32f2f;
+  color: #d32f2f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-assignment-btn:hover {
+  background-color: #d32f2f;
+  color: white;
+  transform: scale(1.05);
+}
+
+.delete-assignment-btn:active {
+  transform: scale(0.95);
 }

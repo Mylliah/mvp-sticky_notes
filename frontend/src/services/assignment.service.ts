@@ -88,4 +88,33 @@ export const assignmentService = {
       throw new Error('Failed to delete assignment');
     }
   },
+
+  // Changer le statut d'une assignation (en_cours / terminé)
+  async updateStatus(id: number, status: 'en_cours' | 'terminé'): Promise<Assignment> {
+    console.log('[assignmentService] Updating status:', id, status);
+    const response = await fetch(`${API_BASE}/assignments/${id}/status`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ recipient_status: status }),
+    });
+    return handleResponse<Assignment>(response);
+  },
+
+  // Basculer la priorité d'une assignation
+  async togglePriority(id: number): Promise<Assignment> {
+    console.log('[assignmentService] Toggling priority:', id);
+    const response = await fetch(`${API_BASE}/assignments/${id}/priority`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    return handleResponse<Assignment>(response);
+  },
+
+  // Récupérer les assignations non lues
+  async getUnreadAssignments(): Promise<{ count: number; assignments: Assignment[] }> {
+    const response = await fetch(`${API_BASE}/assignments/unread`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<{ count: number; assignments: Assignment[] }>(response);
+  },
 };
