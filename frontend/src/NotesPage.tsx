@@ -273,6 +273,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 key={note.id}
                 note={note}
                 onEdit={handleEditNote}
+                onClick={handleEditNote}
                 onDelete={handleDeleteNote}
                 onDragStart={setDraggedNote}
                 onDragEnd={() => setDraggedNote(null)}

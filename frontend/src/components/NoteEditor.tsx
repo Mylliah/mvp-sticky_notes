@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { noteService } from '../services/note.service';
 import { assignmentService } from '../services/assignment.service';
 import { authService } from '../services/auth.service';
+import { userService } from '../services/user.service';
 import { Note } from '../types/note.types';
 import { Assignment } from '../types/assignment.types';
+import { User } from '../types/auth.types';
 import './NoteEditor.css';
 
 interface NoteEditorProps {
@@ -27,6 +29,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   // Gestion du panel d'informations
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
+  const [usersMap, setUsersMap] = useState<Map<number, User>>(new Map());
+  const [creatorName, setCreatorName] = useState<string>('');
 
   // Charger la note si on est en mode édition
   useEffect(() => {
@@ -59,6 +63,22 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       // Stocker toutes les assignations pour le panel d'info
       setAllAssignments(assignments);
       
+      // Charger les noms d'utilisateurs pour toutes les assignations
+      const userIds = assignments.map(a => a.user_id);
+      if (userIds.length > 0) {
+        const users = await userService.getUsers(userIds);
+        setUsersMap(users);
+      }
+      
+      // Charger le nom du créateur
+      try {
+        const creator = await userService.getUser(note.creator_id);
+        setCreatorName(creator.username);
+      } catch (err) {
+        console.error('Error loading creator:', err);
+        setCreatorName(`Utilisateur #${note.creator_id}`);
+      }
+      
       const mine = assignments.find(a => {
         console.log('  🔎 Checking assignment:', a.user_id, '=== ', currentUser.id, '?', a.user_id === currentUser.id);
         return a.user_id === currentUser.id;
@@ -68,7 +88,15 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       if (mine) {
         setMyAssignment(mine);
         setIsCompleted(mine.recipient_status === 'terminé');
-        console.log('✅ Assignation trouvée ! Status:', mine.recipient_status);
+        console.log('✅ Assignation trouvée ! Status:', mine.recipient_status, 'is_read:', mine.is_read);
+        
+        // Marquer comme lu automatiquement si pas encore lu
+        if (!mine.is_read) {
+          console.log('🔄 La note n\'est pas encore lue, marquage en cours...');
+          await markAsRead(mine.id);
+        } else {
+          console.log('✅ La note est déjà marquée comme lue');
+        }
       } else {
         // Réinitialiser si pas d'assignation
         setMyAssignment(null);
@@ -77,6 +105,26 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       }
     } catch (err) {
       console.error('❌ Error loading assignment:', err);
+    }
+  };
+
+  const markAsRead = async (assignmentId: number) => {
+    try {
+      console.log('📖 Marquage comme lu de l\'assignation', assignmentId);
+      const updatedAssignment = await assignmentService.updateAssignment(assignmentId, { is_read: true });
+      console.log('✅ Assignation mise à jour:', updatedAssignment);
+      
+      // Mettre à jour l'état local sans recharger
+      setMyAssignment(updatedAssignment);
+      
+      // Mettre à jour aussi dans la liste complète des assignations
+      setAllAssignments(prev => 
+        prev.map(a => a.id === assignmentId ? updatedAssignment : a)
+      );
+      
+      console.log('✅ État local mis à jour');
+    } catch (err) {
+      console.error('❌ Erreur lors du marquage comme lu:', err);
     }
   };
 
@@ -162,24 +210,51 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const handleDelete = async () => {
     if (!note) return;
     
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await noteService.deleteNote(note.id);
-      
-      // Notifier le parent
-      if (onNoteDeleted) {
-        onNoteDeleted();
+    // Si l'utilisateur est le destinataire (pas le créateur), supprimer seulement l'assignation
+    const isCreator = currentUser && note.creator_id === currentUser.id;
+    
+    if (!isCreator && myAssignment) {
+      // Destinataire : supprimer l'assignation
+      if (!window.confirm('Êtes-vous sûr de vouloir retirer cette note de votre liste ?')) {
+        return;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
-    } finally {
-      setIsLoading(false);
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        await assignmentService.deleteAssignment(myAssignment.id);
+        
+        // Notifier le parent
+        if (onNoteDeleted) {
+          onNoteDeleted();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'assignation');
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (isCreator) {
+      // Créateur : supprimer la note complètement
+      if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette note ? Elle sera supprimée pour tous les destinataires.')) {
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        await noteService.deleteNote(note.id);
+        
+        // Notifier le parent
+        if (onNoteDeleted) {
+          onNoteDeleted();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -188,22 +263,38 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       <div className="note-editor-modal">
         {/* Barre d'actions supérieure */}
         <div className="note-editor-actions">
-          <button
-            className="action-btn"
-            onClick={() => setImportant(!important)}
-            title="Marquer comme important"
-          >
-            {important ? '❗' : '❕'}
-          </button>
+          {/* Bouton Important/Priorité - visible seulement pour le créateur OU bouton priorité pour destinataire */}
+          {currentUser && note && note.creator_id === currentUser.id ? (
+            // Créateur : bouton important
+            <button
+              className="action-btn"
+              onClick={() => setImportant(!important)}
+              title="Marquer comme important"
+            >
+              {important ? '❗' : '❕'}
+            </button>
+          ) : myAssignment ? (
+            // Destinataire : afficher la priorité (lecture seule)
+            <button
+              className="action-btn"
+              disabled
+              title={myAssignment.recipient_priority ? "Priorité haute" : "Priorité normale"}
+            >
+              {myAssignment.recipient_priority ? '⭐' : '☆'}
+            </button>
+          ) : null}
           
-          <button
-            className="action-btn"
-            onClick={handleSubmit}
-            disabled={isLoading || !content.trim()}
-            title="Sauvegarder"
-          >
-            💾
-          </button>
+          {/* Bouton Sauvegarder - visible seulement pour le créateur ou nouvelle note */}
+          {(!note || (currentUser && note.creator_id === currentUser.id)) && (
+            <button
+              className="action-btn"
+              onClick={handleSubmit}
+              disabled={isLoading || !content.trim()}
+              title="Sauvegarder"
+            >
+              💾
+            </button>
+          )}
           
           <button
             className="action-btn"
@@ -218,7 +309,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             className="action-btn"
             onClick={handleDelete}
             disabled={isLoading || !note}
-            title="Supprimer"
+            title={currentUser && note && note.creator_id === currentUser.id ? "Supprimer la note" : "Retirer de ma liste"}
           >
             🗑
           </button>
@@ -238,7 +329,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Écrivez votre note ici..."
-          disabled={isLoading}
+          disabled={isLoading || (note && currentUser && note.creator_id !== currentUser.id)}
           autoFocus
         />
 
@@ -287,40 +378,67 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             )}
 
             <div className="info-section">
-              <strong>Créateur :</strong> Utilisateur #{note.creator_id}
+              <strong>Créateur :</strong> {creatorName || `Utilisateur #${note.creator_id}`}
             </div>
 
             {allAssignments.length > 0 && (
               <div className="info-section">
                 <strong>📤 Assignations ({allAssignments.length}) :</strong>
                 <div className="assignments-list">
-                  {allAssignments.map(assignment => (
-                    <div key={assignment.id} className="assignment-item">
-                      <div className="assignment-details">
-                        <span className="assignment-user">
-                          👤 Utilisateur #{assignment.user_id}
-                          {assignment.user_id === currentUser?.id && ' (Vous)'}
-                        </span>
-                        <span className={`assignment-status ${assignment.recipient_status}`}>
-                          {assignment.recipient_status === 'terminé' ? '✅ Terminé' : '⏳ En cours'}
-                        </span>
-                        {assignment.is_read && (
-                          <span className="assignment-read">📖 Lu</span>
+                  {allAssignments.map(assignment => {
+                    const assignedUser = usersMap.get(assignment.user_id);
+                    const userName = assignedUser?.username || `Utilisateur #${assignment.user_id}`;
+                    const isMe = assignment.user_id === currentUser?.id;
+                    
+                    return (
+                      <div key={assignment.id} className="assignment-item">
+                        <div className="assignment-details">
+                          <span className="assignment-user">
+                            👤 {userName}{isMe && ' (Vous)'}
+                          </span>
+                          <div className="assignment-info">
+                            <span className={`assignment-status ${assignment.recipient_status}`}>
+                              {assignment.recipient_status === 'terminé' ? '✅ Terminé' : '⏳ En cours'}
+                            </span>
+                            <span className="assignment-date">
+                              📅 Assigné le {new Date(assignment.assigned_date).toLocaleDateString('fr-FR')}
+                            </span>
+                            {assignment.read_date && (
+                              <span className="assignment-read">
+                                📖 Lu le {new Date(assignment.read_date).toLocaleDateString('fr-FR')} à {new Date(assignment.read_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                            {!assignment.read_date && (
+                              <span className="assignment-unread">
+                                ✉️ Non lu
+                              </span>
+                            )}
+                            {assignment.finished_date && (
+                              <span className="assignment-finished">
+                                🏁 Terminé le {new Date(assignment.finished_date).toLocaleDateString('fr-FR')} à {new Date(assignment.finished_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                            {assignment.recipient_priority && (
+                              <span className="assignment-priority">
+                                ⭐ Prioritaire
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Bouton supprimer uniquement si créateur de la note */}
+                        {currentUser && note.creator_id === currentUser.id && (
+                          <button
+                            className="delete-assignment-btn"
+                            onClick={() => handleDeleteAssignment(assignment.id)}
+                            title="Supprimer cette assignation"
+                          >
+                            🗑️
+                          </button>
                         )}
                       </div>
-                      
-                      {/* Bouton supprimer uniquement si créateur de la note */}
-                      {currentUser && note.creator_id === currentUser.id && (
-                        <button
-                          className="delete-assignment-btn"
-                          onClick={() => handleDeleteAssignment(assignment.id)}
-                          title="Supprimer cette assignation"
-                        >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

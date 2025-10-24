@@ -76,8 +76,30 @@ def create_assignment():
 @bp.get('/assignments')
 @jwt_required()
 def list_assignments():
-    """Lister toutes les assignations (authentification requise)."""
-    assignments = Assignment.query.order_by(Assignment.id.asc()).all()
+    """Lister les assignations avec filtres optionnels (authentification requise)."""
+    # Récupérer les paramètres de requête
+    note_id = request.args.get('note_id', type=int)
+    user_id = request.args.get('user_id', type=int)
+    assigner_id = request.args.get('assigner_id', type=int)
+    status = request.args.get('status')
+    
+    # Construire la requête avec filtres
+    query = Assignment.query
+    
+    if note_id:
+        query = query.filter_by(note_id=note_id)
+    
+    if user_id:
+        query = query.filter_by(user_id=user_id)
+    
+    if assigner_id:
+        # Filtrer par créateur de la note
+        query = query.join(Note).filter(Note.creator_id == assigner_id)
+    
+    if status:
+        query = query.filter_by(recipient_status=status)
+    
+    assignments = query.order_by(Assignment.id.asc()).all()
     return [a.to_dict() for a in assignments]
 
 @bp.get('/assignments/<int:assignment_id>')
@@ -129,6 +151,10 @@ def update_assignment(assignment_id):
         
     if "is_read" in data:
         assignment.is_read = data["is_read"]
+        # Mettre à jour read_date si on marque comme lu
+        if data["is_read"] and not assignment.read_date:
+            from datetime import datetime, timezone
+            assignment.read_date = datetime.now(timezone.utc)
         
     db.session.commit()
     
