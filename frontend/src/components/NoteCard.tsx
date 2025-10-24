@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Note } from '../types/note.types';
 import { authService } from '../services/auth.service';
+import { assignmentService } from '../services/assignment.service';
 import './NoteCard.css';
 
 interface NoteCardProps {
@@ -13,6 +15,39 @@ interface NoteCardProps {
 export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
+  const [isCompleted, setIsCompleted] = useState(false);
+  
+  // Charger le statut de l'assignation au montage
+  useEffect(() => {
+    const loadAssignmentStatus = async () => {
+      if (!currentUser) return;
+      
+      console.log(`[NoteCard ${note.id}] 🔄 Chargement du statut...`);
+      
+      try {
+        const assignments = await assignmentService.getAssignments({ note_id: note.id });
+        console.log(`[NoteCard ${note.id}] 📦 Assignments reçus:`, assignments);
+        
+        if (assignments && assignments.length > 0) {
+          // Vérifier si MON assignation (user_id = moi) est terminée
+          const myAssignment = assignments.find(a => {
+            console.log(`[NoteCard ${note.id}] 🔍 Compare: ${a.user_id} === ${currentUser.id} ?`, a.user_id === currentUser.id);
+            return a.user_id === currentUser.id;
+          });
+          
+          const completed = myAssignment?.recipient_status === 'terminé';
+          console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed);
+          setIsCompleted(completed);
+        } else {
+          console.log(`[NoteCard ${note.id}] ⚠️ Aucune assignation trouvée`);
+          setIsCompleted(false);
+        }
+      } catch (err) {
+        console.error(`[NoteCard ${note.id}] ❌ Error loading assignment status:`, err);
+      }
+    };
+    loadAssignmentStatus();
+  }, [note.id, currentUser]);
   
   // Debug: afficher les valeurs dans la console
   console.log('NoteCard Debug:', {
@@ -89,6 +124,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       {note.important && (
         <div className="important-badge">
           ❗
+        </div>
+      )}
+
+      {/* Badge "terminé" si au moins une assignation est terminée */}
+      {isCompleted && (
+        <div className="completed-badge" title="Terminé">
+          ✓
         </div>
       )}
     </div>

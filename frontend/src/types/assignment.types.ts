@@ -1,24 +1,22 @@
 export interface Assignment {
   id: number;
   note_id: number;
-  assigner_id: number;
-  user_id: number; // Backend utilise "user_id" pour l'assignee
-  status: 'pending' | 'in_progress' | 'completed';
+  user_id: number; // ID du destinataire
   assigned_date: string;
+  is_read: boolean;
   read_date: string | null;
-  is_deleted: boolean;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
+  recipient_priority: boolean;
+  recipient_status: 'en_cours' | 'terminé'; // Statut côté destinataire
+  finished_date: string | null;
 }
 
 export interface CreateAssignmentRequest {
   note_id: number;
-  user_id: number; // Backend attend "user_id" et non "assignee_id"
-  status?: 'pending' | 'in_progress' | 'completed';
+  user_id: number; // Backend attend "user_id"
+  is_read?: boolean;
 }
 
 export interface UpdateAssignmentRequest {
-  status?: 'pending' | 'in_progress' | 'completed';
-  read_date?: string;
+  user_id?: number;
+  is_read?: boolean;
 }
