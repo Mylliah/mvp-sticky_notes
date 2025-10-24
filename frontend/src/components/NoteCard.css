@@ -6,7 +6,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
   transition: all 0.2s ease;
-  cursor: pointer;
+  cursor: move;
   margin-bottom: 16px;
   min-height: 120px;
 }
@@ -14,6 +14,13 @@
 .note-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
+}
+
+/* État pendant le drag */
+.note-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .note-card.important {

@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
-import { ContactTabs } from './components/ContactTabs';
+import ContactBadges from './components/ContactBadges';
+import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
 import { noteService } from './services/note.service';
 import { authService } from './services/auth.service';
+import { assignmentService } from './services/assignment.service';
+import { contactService } from './services/contact.service';
 import './NotesPage.css';
 
 interface NotesPageProps {
@@ -27,6 +30,16 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   // Filtre par contact
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
+  // Drag & Drop
+  const [draggedNote, setDraggedNote] = useState<Note | null>(null);
+
+  // Toast notifications
+  const { addToast } = useToast();
+  const [lastAssignmentId, setLastAssignmentId] = useState<number | null>(null);
+
+  // Contacts pour récupérer les noms
+  const [contactsMap, setContactsMap] = useState<Map<number, string>>(new Map());
+
   // Charger les notes
   const loadNotes = async () => {
     console.log('[NotesPage] Loading notes with filters:', { 
@@ -46,8 +59,18 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       };
 
       // Appliquer les filtres
-      if (activeFilter === 'important') {
-        params.important = true;
+      if (activeFilter !== 'all') {
+        if (activeFilter === 'important') {
+          params.filter = 'important';
+        } else if (activeFilter === 'received') {
+          params.filter = 'received';
+        } else if (activeFilter === 'sent') {
+          params.filter = 'sent';
+        } else if (activeFilter === 'in_progress') {
+          params.filter = 'in_progress';
+        } else if (activeFilter === 'done') {
+          params.filter = 'completed'; // Backend utilise "completed"
+        }
       }
 
       if (searchQuery) {
@@ -70,6 +93,23 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       setLoading(false);
     }
   };
+
+  // Charger les contacts au montage pour créer une map des noms
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const contacts = await contactService.getContacts();
+        const map = new Map<number, string>();
+        contacts.forEach(contact => {
+          map.set(contact.contact_user_id, contact.nickname || contact.username);
+        });
+        setContactsMap(map);
+      } catch (err) {
+        console.error('[NotesPage] Error loading contacts:', err);
+      }
+    };
+    loadContacts();
+  }, []);
 
   // Charger les notes au montage et quand les filtres changent
   useEffect(() => {
@@ -103,6 +143,71 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     }
   };
 
+  // Gérer le drop d'une note sur un contact
+  const handleNoteDrop = async (noteId: number, contactId: number) => {
+    try {
+      console.log('[NotesPage] Assigning note', noteId, 'to contact', contactId);
+      
+      // Créer l'assignation
+      const assignment = await assignmentService.createAssignment({
+        note_id: noteId,
+        user_id: contactId, // Backend attend "user_id"
+      });
+
+      setLastAssignmentId(assignment.id);
+
+      // Trouver le nom du contact
+      const currentUser = authService.getCurrentUser();
+      let contactName = 'contact';
+      
+      if (currentUser && contactId === currentUser.id) {
+        contactName = 'vous-même';
+      } else {
+        // Récupérer le nom depuis la map des contacts
+        contactName = contactsMap.get(contactId) || `contact #${contactId}`;
+      }
+
+      // Afficher un toast de confirmation avec bouton Annuler
+      addToast({
+        message: `Note assignée à ${contactName} ✓`,
+        type: 'success',
+        duration: 5000,
+        actions: [
+          {
+            label: 'Annuler',
+            onClick: async () => {
+              try {
+                await assignmentService.deleteAssignment(assignment.id);
+                addToast({
+                  message: 'Attribution annulée',
+                  type: 'info',
+                  duration: 3000,
+                });
+                loadNotes();
+              } catch (err) {
+                addToast({
+                  message: 'Erreur lors de l\'annulation',
+                  type: 'error',
+                  duration: 3000,
+                });
+              }
+            },
+          },
+        ],
+      });
+
+      // Recharger les notes pour mettre à jour l'affichage
+      loadNotes();
+    } catch (err) {
+      console.error('[NotesPage] Error assigning note:', err);
+      addToast({
+        message: err instanceof Error ? err.message : 'Erreur lors de l\'assignation',
+        type: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
   const currentUser = authService.getCurrentUser();
 
   return (
@@ -129,12 +234,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           )}
         </div>
       </header>
-
-      {/* Onglets de contacts */}
-      <ContactTabs
-        selectedContactId={selectedContactId}
-        onSelectContact={setSelectedContactId}
-      />
 
       {/* Barre de filtres */}
       <FilterBar
@@ -167,11 +266,19 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 note={note}
                 onEdit={handleEditNote}
                 onDelete={handleDeleteNote}
+                onDragStart={setDraggedNote}
+                onDragEnd={() => setDraggedNote(null)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Badges de contacts en bas */}
+      <ContactBadges onDrop={handleNoteDrop} />
+
+      {/* Toast Container */}
+      <ToastContainer />
 
       {/* Modal d'édition */}
       {showEditor && (

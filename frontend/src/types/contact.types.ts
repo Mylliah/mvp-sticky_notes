@@ -6,7 +6,13 @@ export interface Contact {
 }
 
 export interface ContactRelationship {
-  contact_id: number;
-  contact: Contact;
-  created_date: string;
+  id: number;
+  user_id: number;
+  contact_user_id: number;
+  username: string;
+  email: string;
+  nickname: string;
+  is_self: boolean;
+  contact_action: string | null;
+  created_date: string | null;
 }
