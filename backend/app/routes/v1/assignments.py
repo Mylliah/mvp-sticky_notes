@@ -151,6 +151,10 @@ def update_assignment(assignment_id):
         
     if "is_read" in data:
         assignment.is_read = data["is_read"]
+        # Mettre à jour read_date si on marque comme lu
+        if data["is_read"] and not assignment.read_date:
+            from datetime import datetime, timezone
+            assignment.read_date = datetime.now(timezone.utc)
         
     db.session.commit()
     

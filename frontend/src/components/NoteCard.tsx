@@ -10,9 +10,10 @@ interface NoteCardProps {
   onDelete?: (noteId: number) => void;
   onDragStart?: (note: Note) => void;
   onDragEnd?: () => void;
+  onClick?: (note: Note) => void;
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -99,6 +100,8 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       draggable={true}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onClick={() => onClick && onClick(note)}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       {/* En-tête avec créateur et date */}
       <div className="note-header">
@@ -111,14 +114,16 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
         {note.content}
       </div>
 
-      {/* Icône d'édition */}
-      <button
-        className="note-edit-btn"
-        onClick={() => onEdit && onEdit(note)}
-        title="Modifier"
-      >
-        ✏️
-      </button>
+      {/* Icône d'édition - visible uniquement pour le créateur */}
+      {isMyNote && (
+        <button
+          className="note-edit-btn"
+          onClick={() => onEdit && onEdit(note)}
+          title="Modifier"
+        >
+          ✏️
+        </button>
+      )}
 
       {/* Badge important si applicable */}
       {note.important && (
