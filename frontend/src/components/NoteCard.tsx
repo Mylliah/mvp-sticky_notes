@@ -6,9 +6,11 @@ interface NoteCardProps {
   note: Note;
   onEdit?: (note: Note) => void;
   onDelete?: (noteId: number) => void;
+  onDragStart?: (note: Note) => void;
+  onDragEnd?: () => void;
 }
 
-export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   
@@ -37,8 +39,32 @@ export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
     return `Utilisateur #${note.creator_id}`;
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (onDragStart) {
+      onDragStart(note);
+    }
+    // Ajouter une classe pour le feedback visuel
+    e.currentTarget.classList.add('dragging');
+    
+    // Stocker l'ID de la note dans le dataTransfer
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', note.id.toString());
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('dragging');
+    if (onDragEnd) {
+      onDragEnd();
+    }
+  };
+
   return (
-    <div className={`note-card ${note.important ? 'important' : ''}`}>
+    <div 
+      className={`note-card ${note.important ? 'important' : ''}`}
+      draggable={true}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       {/* En-tête avec créateur et date */}
       <div className="note-header">
         <span className="note-creator">de {getCreatorName()}</span>
