@@ -49,7 +49,7 @@ def get_notes():
     ---
     Returns list of notes created by OR assigned to current user
     Query Parameters:
-      - filter: 'important', 'important_by_me', 'unread', 'received', 'sent'
+      - filter: 'important', 'important_by_me', 'unread', 'received', 'sent', 'in_progress', 'completed'
       - sort: 'date_asc', 'date_desc', 'important_first'
       - q: search query (searches in note content)
       - page: page number (default: 1)
@@ -69,7 +69,9 @@ def get_notes():
     if page < 1:
         page = 1
     
-    # Query de base
+    # Query de base - toujours LEFT JOIN pour voir toutes les notes accessibles
+    filter_param = request.args.get('filter')
+    
     query = Note.query.join(
         Assignment, Note.id == Assignment.note_id, isouter=True
     ).filter(
@@ -98,7 +100,6 @@ def get_notes():
         query = query.filter(Note.important == important_filter)
     
     # Filtres
-    filter_param = request.args.get('filter')
     if filter_param:
         if filter_param == 'important':
             # Notes marquées importantes par le créateur
@@ -116,15 +117,25 @@ def get_notes():
                 Assignment.is_read == False
             )
         elif filter_param == 'received':
-            # Notes assignées à l'utilisateur (y compris auto-assignations)
-            query = query.filter(
-                Assignment.user_id == current_user_id
-            )
+            # Notes assignées à l'utilisateur
+            query = query.filter(Assignment.user_id == current_user_id)
         elif filter_param == 'sent':
-            # Notes créées ET assignées à quelqu'un
+            # Notes créées par l'utilisateur ET assignées à quelqu'un
             query = query.filter(
                 Note.creator_id == current_user_id,
                 Assignment.id.isnot(None)  # Doit avoir au moins 1 assignation
+            )
+        elif filter_param == 'in_progress':
+            # Toutes les notes avec des assignations en cours (visibles par l'utilisateur)
+            query = query.filter(
+                Assignment.recipient_status == 'en_cours',
+                Assignment.id.isnot(None)
+            )
+        elif filter_param == 'completed':
+            # Toutes les notes avec des assignations terminées (visibles par l'utilisateur)
+            query = query.filter(
+                Assignment.recipient_status == 'terminé',
+                Assignment.id.isnot(None)
             )
     
     # Tri
