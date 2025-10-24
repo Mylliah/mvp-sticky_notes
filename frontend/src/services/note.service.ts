@@ -39,11 +39,14 @@ export const noteService = {
 
   // Récupérer toutes les notes
   async getNotes(params?: {
-    filter?: 'important' | 'unread' | 'received' | 'sent';
+    filter?: 'important' | 'unread' | 'received' | 'sent' | 'in_progress' | 'completed';
     sort?: 'date_asc' | 'date_desc' | 'important_first';
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
     page?: number;
     per_page?: number;
     q?: string; // Recherche textuelle
+    creator_id?: number; // Filtrer par créateur
   }): Promise<{
     notes: Note[];
     total: number;
@@ -55,9 +58,12 @@ export const noteService = {
     const queryParams = new URLSearchParams();
     if (params?.filter) queryParams.append('filter', params.filter);
     if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
     if (params?.q) queryParams.append('q', params.q);
+    if (params?.creator_id) queryParams.append('creator_id', params.creator_id.toString());
 
     const response = await fetch(
       `${API_BASE}/notes?${queryParams.toString()}`,
