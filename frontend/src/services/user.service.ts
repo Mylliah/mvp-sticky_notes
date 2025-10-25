@@ -96,4 +96,12 @@ export const userService = {
   clearCache() {
     userCache.clear();
   },
+
+  // Rechercher des utilisateurs par username
+  async searchUsers(query: string): Promise<User[]> {
+    const response = await fetch(`${API_BASE}/users?search=${encodeURIComponent(query)}`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<User[]>(response);
+  },
 };

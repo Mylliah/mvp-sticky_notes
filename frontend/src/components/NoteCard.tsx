@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Note } from '../types/note.types';
 import { Assignment } from '../types/assignment.types';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
+import { handleAuthError } from '../utils/auth-redirect';
 import './NoteCard.css';
 
 interface NoteCardProps {
@@ -13,14 +14,37 @@ interface NoteCardProps {
   onDragEnd?: () => void;
   onClick?: (note: Note) => void;
   assignments?: Assignment[]; // Pré-chargé par le parent
+  onAssign?: (noteId: number, contactId: number) => void; // Nouveau callback pour l'assignation
+  contacts?: Array<{ id: number; nickname: string }>; // Liste des contacts disponibles
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [] }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [], onAssign, contacts = [] }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isPriority, setIsPriority] = useState(false);
   const [creatorName, setCreatorName] = useState<string>('');
+  const [recipientsText, setRecipientsText] = useState<string>('');
+  const [showAssignMenu, setShowAssignMenu] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Fermer le menu quand on clique ailleurs
+  useEffect(() => {
+    if (!showAssignMenu) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Ne fermer que si le clic est en dehors du bouton ET du menu
+      if (buttonRef.current && !buttonRef.current.contains(target) &&
+          menuRef.current && !menuRef.current.contains(target)) {
+        setShowAssignMenu(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAssignMenu]);
   
   // Calculer le statut à partir des assignations pré-chargées
   useEffect(() => {
@@ -47,25 +71,78 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     }
   }, [note.id, currentUser, assignments]);
 
-  // Charger le nom du créateur
+  // Charger le nom du créateur et des destinataires
   useEffect(() => {
-    const loadCreatorName = async () => {
-      // Si c'est ma note, pas besoin de charger
+    const loadNames = async () => {
+      // Charger le nom du créateur
       if (isMyNote) {
         setCreatorName('Moi');
-        return;
+      } else {
+        try {
+          const creator = await userService.getUser(note.creator_id);
+          setCreatorName(creator.username);
+        } catch (err) {
+          console.error(`[NoteCard ${note.id}] ❌ Error loading creator name:`, err);
+          if (handleAuthError(err)) {
+            return; // Redirection en cours
+          }
+          setCreatorName(`Utilisateur #${note.creator_id}`);
+        }
       }
 
-      try {
-        const creator = await userService.getUser(note.creator_id);
-        setCreatorName(creator.username);
-      } catch (err) {
-        console.error(`[NoteCard ${note.id}] ❌ Error loading creator name:`, err);
-        setCreatorName(`Utilisateur #${note.creator_id}`);
+      // Charger les noms des destinataires
+      if (assignments && assignments.length > 0) {
+        try {
+          // Charger les noms de tous les destinataires
+          const recipientNames = await Promise.all(
+            assignments.map(async (assignment) => {
+              // Si c'est moi, afficher "Moi"
+              if (currentUser && assignment.user_id === currentUser.id) {
+                return 'Moi';
+              }
+              
+              try {
+                const user = await userService.getUser(assignment.user_id);
+                return user.username;
+              } catch (err) {
+                console.error(`Error loading user ${assignment.user_id}:`, err);
+                if (handleAuthError(err)) {
+                  return null; // Redirection en cours
+                }
+                return `Utilisateur #${assignment.user_id}`;
+              }
+            })
+          );
+          
+          // Filtrer les null (erreurs d'auth)
+          const validNames = recipientNames.filter(name => name !== null) as string[];
+
+          // Formater le texte selon le nombre de destinataires
+          if (validNames.length === 0) {
+            setRecipientsText('');
+          } else if (validNames.length === 1) {
+            setRecipientsText(`à ${validNames[0]}`);
+          } else if (validNames.length === 2) {
+            setRecipientsText(`à ${validNames[0]} et ${validNames[1]}`);
+          } else if (validNames.length === 3) {
+            setRecipientsText(`à ${validNames[0]}, ${validNames[1]} et ${validNames[2]}`);
+          } else {
+            setRecipientsText(`à ${validNames.length} personnes`);
+          }
+        } catch (err) {
+          console.error(`[NoteCard ${note.id}] ❌ Error loading recipients:`, err);
+          if (handleAuthError(err)) {
+            return; // Redirection en cours
+          }
+          setRecipientsText('');
+        }
+      } else {
+        setRecipientsText('');
       }
     };
-    loadCreatorName();
-  }, [note.id, note.creator_id, isMyNote]);
+    
+    loadNames();
+  }, [note.id, note.creator_id, isMyNote, assignments, currentUser]);
   
   // Debug: afficher les valeurs dans la console
   console.log('NoteCard Debug:', {
@@ -110,7 +187,7 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
 
   return (
     <div 
-      className={`note-card ${note.important ? 'important' : ''}`}
+      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''}`}
       draggable={true}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -119,31 +196,82 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     >
       {/* En-tête avec créateur et date */}
       <div className="note-header">
-        <span className="note-creator">de {getCreatorName()}</span>
-        <span className="note-date">créé le {formatDate(note.created_date)}</span>
+        <div className="note-metadata">
+          <span className="note-creator">de {getCreatorName()}</span>
+          {recipientsText && (
+            <span className="note-recipients">{recipientsText}</span>
+          )}
+        </div>
+        <div className="note-header-right" onClick={(e) => e.stopPropagation()}>
+          <span className="note-date">créé le {formatDate(note.created_date)}</span>
+          
+          {/* Bouton d'assignation dans le bandeau - visible uniquement pour le créateur */}
+          {isMyNote && onAssign && contacts.length > 0 && (
+            <div className="assign-menu-container">
+              <button
+                ref={buttonRef}
+                className="assign-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAssignMenu(!showAssignMenu);
+                }}
+                title="Assigner cette note"
+              >
+                👥
+              </button>
+              
+              {showAssignMenu && (
+                <div 
+                  ref={menuRef}
+                  className="assign-menu"
+                >
+                  <div className="assign-menu-header">
+                    Assigner à :
+                  </div>
+                  {contacts.map((contact) => (
+                    <button
+                      key={contact.id}
+                      className="assign-menu-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAssign(note.id, contact.id);
+                        setShowAssignMenu(false);
+                      }}
+                    >
+                      {contact.nickname}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Badge important si applicable - en haut à gauche */}
+      {note.important && (
+        <div className="important-badge">
+          ❗
+        </div>
+      )}
 
       {/* Contenu de la note */}
       <div className="note-body">
         {note.content}
       </div>
 
-      {/* Icône d'édition - visible uniquement pour le créateur */}
+      {/* Icône d'édition - visible uniquement pour le créateur et au survol */}
       {isMyNote && (
         <button
           className="note-edit-btn"
-          onClick={() => onEdit && onEdit(note)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit && onEdit(note);
+          }}
           title="Modifier"
         >
           ✏️
         </button>
-      )}
-
-      {/* Badge important si applicable */}
-      {note.important && (
-        <div className="important-badge">
-          ❗
-        </div>
       )}
 
       {/* Badge "terminé" si au moins une assignation est terminée */}

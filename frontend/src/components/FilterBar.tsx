@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './FilterBar.css';
 
 export type FilterType = 'all' | 'important' | 'in_progress' | 'done' | 'received' | 'sent';
@@ -15,6 +15,29 @@ export default function FilterBar({ onFilterChange, onSortChange, onSearchChange
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce de la recherche (300ms)
+  useEffect(() => {
+    // Annuler le timer précédent
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Lancer un nouveau timer
+    debounceTimerRef.current = setTimeout(() => {
+      if (onSearchChange) {
+        onSearchChange(searchQuery);
+      }
+    }, 300);
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, onSearchChange]);
 
   const handleFilterClick = (filter: FilterType) => {
     if (onFilterChange) {
@@ -30,8 +53,20 @@ export default function FilterBar({ onFilterChange, onSortChange, onSearchChange
     }
   };
 
+  const handleSearchClear = () => {
+    setSearchQuery('');
+    if (onSearchChange) {
+      onSearchChange('');
+    }
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Avec le debounce, pas besoin de submit manuel
+    // Mais on peut forcer l'appel immédiat si l'utilisateur appuie sur Enter
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     if (onSearchChange) {
       onSearchChange(searchQuery);
     }
@@ -83,7 +118,7 @@ export default function FilterBar({ onFilterChange, onSortChange, onSearchChange
         </button>
 
         <button
-          className="filter-btn search-btn"
+          className={`filter-btn ${showSearch ? 'active' : ''}`}
           onClick={() => setShowSearch(!showSearch)}
         >
           🔍
@@ -100,9 +135,16 @@ export default function FilterBar({ onFilterChange, onSortChange, onSearchChange
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
           />
-          <button type="submit" className="search-submit-btn">
-            Rechercher
-          </button>
+          {searchQuery && (
+            <button 
+              type="button" 
+              className="search-clear-btn"
+              onClick={handleSearchClear}
+              title="Effacer"
+            >
+              ✕
+            </button>
+          )}
         </form>
       )}
     </div>

@@ -3,6 +3,7 @@ import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
+import ContactsManager from './components/ContactsManager';
 import Sidebar from './components/Sidebar';
 import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
@@ -11,6 +12,7 @@ import { noteService } from './services/note.service';
 import { authService } from './services/auth.service';
 import { assignmentService } from './services/assignment.service';
 import { contactService } from './services/contact.service';
+import { handleAuthError } from './utils/auth-redirect';
 import './NotesPage.css';
 
 interface NotesPageProps {
@@ -23,6 +25,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [showContactsManager, setShowContactsManager] = useState(false);
+  const [contactsRefreshTrigger, setContactsRefreshTrigger] = useState(0);
   
   // Filtres
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -41,6 +45,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Contacts pour récupérer les noms
   const [contactsMap, setContactsMap] = useState<Map<number, string>>(new Map());
+  
+  // Liste des contacts pour le menu d'assignation
+  const [contactsList, setContactsList] = useState<Array<{ id: number; nickname: string }>>([]);
 
   // Map des assignations par note_id pour accès rapide
   const [assignmentsMap, setAssignmentsMap] = useState<Map<number, Assignment[]>>(new Map());
@@ -97,6 +104,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       }
     } catch (err) {
       console.error('[NotesPage] Error loading notes:', err);
+      
+      // Gérer les erreurs d'authentification
+      if (handleAuthError(err)) {
+        return; // Redirection en cours
+      }
+      
       const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
       setError(errorMessage);
     } finally {
@@ -140,11 +153,23 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     const loadContacts = async () => {
       try {
         const contacts = await contactService.getContacts();
+        console.log('[NotesPage] Total contacts loaded:', contacts.length);
         const map = new Map<number, string>();
+        const list: Array<{ id: number; nickname: string }> = [];
+        
         contacts.forEach(contact => {
+          console.log('[NotesPage] Contact:', contact.nickname || contact.username, 'is_self:', contact.is_self);
+          // Inclure TOUS les contacts, y compris "Moi" pour permettre l'auto-assignation
           map.set(contact.contact_user_id, contact.nickname || contact.username);
+          list.push({
+            id: contact.contact_user_id,
+            nickname: contact.nickname || contact.username
+          });
         });
+        
+        console.log('[NotesPage] Contacts list for assignment menu:', list.length, 'contacts');
         setContactsMap(map);
+        setContactsList(list);
       } catch (err) {
         console.error('[NotesPage] Error loading contacts:', err);
       }
@@ -304,6 +329,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           setShowEditor(true);
         }}
         onShowAllNotes={handleShowAllNotes}
+        onManageContacts={() => setShowContactsManager(true)}
         activeView={activeFilter === 'all' && !searchQuery ? 'all' : 'filtered'}
       />
 
@@ -358,6 +384,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 onDragStart={setDraggedNote}
                 onDragEnd={() => setDraggedNote(null)}
                 assignments={assignmentsMap.get(note.id) || []}
+                onAssign={handleNoteDrop}
+                contacts={contactsList}
               />
             ))}
           </div>
@@ -365,7 +393,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       </div>
 
       {/* Badges de contacts à droite */}
-      <ContactBadges onDrop={handleNoteDrop} />
+      <ContactBadges 
+        onDrop={handleNoteDrop}
+        refreshTrigger={contactsRefreshTrigger}
+      />
 
       {/* Toast Container */}
       <ToastContainer />
@@ -383,6 +414,17 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             if (selectedNote) {
               refreshNoteAssignments(selectedNote.id);
             }
+          }}
+        />
+      )}
+
+      {/* Modal de gestion des contacts */}
+      {showContactsManager && (
+        <ContactsManager
+          onClose={() => setShowContactsManager(false)}
+          onContactsChanged={() => {
+            // Ne PAS recharger les notes, juste forcer le rechargement des ContactBadges
+            setContactsRefreshTrigger(prev => prev + 1);
           }}
         />
       )}

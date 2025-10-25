@@ -4,10 +4,11 @@ import './Sidebar.css';
 interface SidebarProps {
   onNewNote: () => void;
   onShowAllNotes: () => void;
+  onManageContacts?: () => void;
   activeView?: 'all' | 'filtered';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, activeView = 'all' }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageContacts, activeView = 'all' }) => {
   return (
     <div className="sidebar">
       <div className="sidebar-top">
@@ -31,6 +32,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, activeView
       </div>
 
       <div className="sidebar-bottom">
+        {/* Bouton Contacts */}
+        <button 
+          className="sidebar-button contacts-button" 
+          onClick={onManageContacts}
+          title="Gérer mes contacts"
+        >
+          <span className="button-icon">👥</span>
+        </button>
+
         {/* Bouton Profil */}
         <button className="sidebar-button profile-button" title="Mon profil">
           <span className="button-icon">M</span>
