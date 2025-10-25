@@ -4,6 +4,30 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const API_BASE = `${API_URL}/v1`;
 
 export const authService = {
+  // S'inscrire
+  async register(userData: { username: string; email: string; password: string }): Promise<LoginResponse> {
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Erreur lors de l\'inscription' }));
+      throw new Error(error.message || 'Impossible de créer le compte');
+    }
+
+    const data: LoginResponse = await response.json();
+    
+    // Sauvegarder automatiquement le token après l'inscription
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    
+    return data;
+  },
+
   // Se connecter
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await fetch(`${API_BASE}/auth/login`, {
