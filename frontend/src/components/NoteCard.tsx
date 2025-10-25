@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Note } from '../types/note.types';
+import { Assignment } from '../types/assignment.types';
 import { authService } from '../services/auth.service';
-import { assignmentService } from '../services/assignment.service';
+import { userService } from '../services/user.service';
 import './NoteCard.css';
 
 interface NoteCardProps {
@@ -11,44 +12,60 @@ interface NoteCardProps {
   onDragStart?: (note: Note) => void;
   onDragEnd?: () => void;
   onClick?: (note: Note) => void;
+  assignments?: Assignment[]; // Pré-chargé par le parent
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [] }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isPriority, setIsPriority] = useState(false);
+  const [creatorName, setCreatorName] = useState<string>('');
   
-  // Charger le statut de l'assignation au montage
+  // Calculer le statut à partir des assignations pré-chargées
   useEffect(() => {
-    const loadAssignmentStatus = async () => {
-      if (!currentUser) return;
-      
-      console.log(`[NoteCard ${note.id}] 🔄 Chargement du statut...`);
-      
+    if (!currentUser || !assignments || assignments.length === 0) {
+      setIsCompleted(false);
+      setIsPriority(false);
+      return;
+    }
+
+    console.log(`[NoteCard ${note.id}] 📦 Using pre-loaded assignments:`, assignments);
+    
+    // Trouver MON assignation
+    const myAssignment = assignments.find((a: Assignment) => a.user_id === currentUser.id);
+    
+    if (myAssignment) {
+      const completed = myAssignment.recipient_status === 'terminé';
+      const priority = myAssignment.recipient_priority === true;
+      console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed, 'Priorité?', priority);
+      setIsCompleted(completed);
+      setIsPriority(priority);
+    } else {
+      setIsCompleted(false);
+      setIsPriority(false);
+    }
+  }, [note.id, currentUser, assignments]);
+
+  // Charger le nom du créateur
+  useEffect(() => {
+    const loadCreatorName = async () => {
+      // Si c'est ma note, pas besoin de charger
+      if (isMyNote) {
+        setCreatorName('Moi');
+        return;
+      }
+
       try {
-        const assignments = await assignmentService.getAssignments({ note_id: note.id });
-        console.log(`[NoteCard ${note.id}] 📦 Assignments reçus:`, assignments);
-        
-        if (assignments && assignments.length > 0) {
-          // Vérifier si MON assignation (user_id = moi) est terminée
-          const myAssignment = assignments.find(a => {
-            console.log(`[NoteCard ${note.id}] 🔍 Compare: ${a.user_id} === ${currentUser.id} ?`, a.user_id === currentUser.id);
-            return a.user_id === currentUser.id;
-          });
-          
-          const completed = myAssignment?.recipient_status === 'terminé';
-          console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed);
-          setIsCompleted(completed);
-        } else {
-          console.log(`[NoteCard ${note.id}] ⚠️ Aucune assignation trouvée`);
-          setIsCompleted(false);
-        }
+        const creator = await userService.getUser(note.creator_id);
+        setCreatorName(creator.username);
       } catch (err) {
-        console.error(`[NoteCard ${note.id}] ❌ Error loading assignment status:`, err);
+        console.error(`[NoteCard ${note.id}] ❌ Error loading creator name:`, err);
+        setCreatorName(`Utilisateur #${note.creator_id}`);
       }
     };
-    loadAssignmentStatus();
-  }, [note.id, currentUser]);
+    loadCreatorName();
+  }, [note.id, note.creator_id, isMyNote]);
   
   // Debug: afficher les valeurs dans la console
   console.log('NoteCard Debug:', {
@@ -68,11 +85,8 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
   };
 
   const getCreatorName = () => {
-    if (isMyNote) {
-      return 'Moi';
-    }
-    // TODO: Récupérer le vrai nom depuis l'API
-    return `Utilisateur #${note.creator_id}`;
+    // Retourner le nom chargé, ou un placeholder pendant le chargement
+    return creatorName || 'Chargement...';
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -136,6 +150,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       {isCompleted && (
         <div className="completed-badge" title="Terminé">
           ✓
+        </div>
+      )}
+
+      {/* Badge priorité en bas à gauche si l'assignation est prioritaire */}
+      {isPriority && (
+        <div className="priority-badge" title="Priorité haute">
+          ⭐
         </div>
       )}
     </div>

@@ -19,4 +19,6 @@ export interface CreateAssignmentRequest {
 export interface UpdateAssignmentRequest {
   user_id?: number;
   is_read?: boolean;
+  recipient_priority?: boolean;
+  recipient_status?: 'en_cours' | 'terminé';
 }

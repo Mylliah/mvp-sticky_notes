@@ -8,16 +8,15 @@ interface FilterBarProps {
   onFilterChange?: (filter: FilterType) => void;
   onSortChange?: (order: SortOrder) => void;
   onSearchChange?: (query: string) => void;
+  activeFilter?: FilterType; // Ajout du prop pour contrôler le filtre actif
 }
 
-export default function FilterBar({ onFilterChange, onSortChange, onSearchChange }: FilterBarProps) {
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+export default function FilterBar({ onFilterChange, onSortChange, onSearchChange, activeFilter = 'all' }: FilterBarProps) {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleFilterClick = (filter: FilterType) => {
-    setActiveFilter(filter);
     if (onFilterChange) {
       onFilterChange(filter);
     }

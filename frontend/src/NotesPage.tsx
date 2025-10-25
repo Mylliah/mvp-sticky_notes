@@ -6,6 +6,7 @@ import ContactBadges from './components/ContactBadges';
 import Sidebar from './components/Sidebar';
 import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
+import { Assignment } from './types/assignment.types';
 import { noteService } from './services/note.service';
 import { authService } from './services/auth.service';
 import { assignmentService } from './services/assignment.service';
@@ -40,6 +41,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Contacts pour récupérer les noms
   const [contactsMap, setContactsMap] = useState<Map<number, string>>(new Map());
+
+  // Map des assignations par note_id pour accès rapide
+  const [assignmentsMap, setAssignmentsMap] = useState<Map<number, Assignment[]>>(new Map());
 
   // Charger les notes
   const loadNotes = async () => {
@@ -86,12 +90,48 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       const data = await noteService.getNotes(params);
       console.log('[NotesPage] Notes loaded:', data.notes?.length || 0);
       setNotes(data.notes || []);
+
+      // Charger toutes les assignations pour les notes chargées
+      if (data.notes && data.notes.length > 0) {
+        await loadAssignments(data.notes);
+      }
     } catch (err) {
       console.error('[NotesPage] Error loading notes:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Charger les assignations pour toutes les notes
+  const loadAssignments = async (notesToLoad: Note[]) => {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) return;
+
+      console.log('[NotesPage] Loading assignments for', notesToLoad.length, 'notes');
+      
+      // Créer une map pour stocker les assignations par note_id
+      const newAssignmentsMap = new Map<number, Assignment[]>();
+
+      // Charger les assignations pour chaque note en parallèle
+      await Promise.all(
+        notesToLoad.map(async (note) => {
+          try {
+            const assignments = await assignmentService.getAssignments({ note_id: note.id });
+            newAssignmentsMap.set(note.id, assignments);
+          } catch (err) {
+            console.error(`[NotesPage] Error loading assignments for note ${note.id}:`, err);
+            newAssignmentsMap.set(note.id, []);
+          }
+        })
+      );
+
+      setAssignmentsMap(newAssignmentsMap);
+      console.log('[NotesPage] Assignments loaded for', newAssignmentsMap.size, 'notes');
+    } catch (err) {
+      console.error('[NotesPage] Error in loadAssignments:', err);
     }
   };
 
@@ -118,14 +158,53 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, sortOrder, searchQuery, selectedContactId]);
 
-  const handleNoteCreated = () => {
+  const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
     setShowEditor(false);
-    loadNotes();
+    
+    if (isNew) {
+      // Nouvelle note : l'ajouter en tête de liste
+      console.log('[NotesPage] Nouvelle note créée:', savedNote);
+      setNotes((prevNotes: Note[]) => [savedNote, ...prevNotes]);
+      
+      // Charger ses assignations (vide au départ normalement)
+      const assignments = await assignmentService.getAssignments({ note_id: savedNote.id });
+      setAssignmentsMap((prev: Map<number, Assignment[]>) => {
+        const newMap = new Map(prev);
+        newMap.set(savedNote.id, assignments);
+        return newMap;
+      });
+    } else {
+      // Note modifiée : mettre à jour dans la liste
+      console.log('[NotesPage] Note modifiée:', savedNote);
+      setNotes((prevNotes: Note[]) => 
+        prevNotes.map((n: Note) => (n.id === savedNote.id ? savedNote : n))
+      );
+      // Les assignations n'ont pas changé, pas besoin de les recharger
+    }
   };
 
   const handleNoteDeleted = () => {
     setShowEditor(false);
     loadNotes();
+  };
+
+  // Recharger uniquement les assignations d'une note spécifique (sans tout recharger)
+  const refreshNoteAssignments = async (noteId: number) => {
+    try {
+      console.log('[NotesPage] Refreshing assignments for note', noteId);
+      const assignments = await assignmentService.getAssignments({ note_id: noteId });
+      
+      // Mettre à jour seulement cette note dans la map
+      setAssignmentsMap((prev: Map<number, Assignment[]>) => {
+        const newMap = new Map(prev);
+        newMap.set(noteId, assignments);
+        return newMap;
+      });
+      
+      console.log('[NotesPage] Assignments refreshed for note', noteId);
+    } catch (err) {
+      console.error('[NotesPage] Error refreshing assignments:', err);
+    }
   };
 
   const handleEditNote = (note: Note) => {
@@ -248,6 +327,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         onFilterChange={setActiveFilter}
         onSortChange={setSortOrder}
         onSearchChange={setSearchQuery}
+        activeFilter={activeFilter}
       />
 
       {/* Zone de contenu */}
@@ -277,6 +357,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 onDelete={handleDeleteNote}
                 onDragStart={setDraggedNote}
                 onDragEnd={() => setDraggedNote(null)}
+                assignments={assignmentsMap.get(note.id) || []}
               />
             ))}
           </div>
@@ -295,7 +376,14 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           note={selectedNote}
           onNoteCreated={handleNoteCreated}
           onNoteDeleted={handleNoteDeleted}
-          onClose={() => setShowEditor(false)}
+          onClose={() => {
+            setShowEditor(false);
+            // Si on a édité une note existante, rafraîchir seulement ses assignations
+            // Si c'est une nouvelle note, on recharge tout (géré par onNoteCreated)
+            if (selectedNote) {
+              refreshNoteAssignments(selectedNote.id);
+            }
+          }}
         />
       )}
       </div> {/* Fermeture de main-content */}
