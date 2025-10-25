@@ -44,7 +44,27 @@ export const contactService = {
     return data.users;
   },
 
-  // Ajouter un contact
+  // Créer un contact
+  async createContact(data: { contact_username: string; nickname: string }): Promise<ContactRelationship> {
+    const response = await fetch(`${API_BASE}/contacts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Modifier un contact
+  async updateContact(contactId: number, data: { nickname?: string; contact_action?: string }): Promise<ContactRelationship> {
+    const response = await fetch(`${API_BASE}/contacts/${contactId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Ajouter un contact (ancienne méthode pour compatibilité)
   async addContact(contactId: number): Promise<ContactRelationship> {
     const response = await fetch(`${API_BASE}/contacts`, {
       method: 'POST',
@@ -55,13 +75,19 @@ export const contactService = {
   },
 
   // Supprimer un contact
-  async removeContact(contactId: number): Promise<void> {
+  async deleteContact(contactId: number): Promise<void> {
     const response = await fetch(`${API_BASE}/contacts/${contactId}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
     if (!response.ok) {
-      throw new Error('Failed to remove contact');
+      const error = await response.json().catch(() => ({ message: 'Failed to delete contact' }));
+      throw new Error(error.message || 'Failed to delete contact');
     }
+  },
+
+  // Supprimer un contact (ancienne méthode pour compatibilité)
+  async removeContact(contactId: number): Promise<void> {
+    return this.deleteContact(contactId);
   },
 };

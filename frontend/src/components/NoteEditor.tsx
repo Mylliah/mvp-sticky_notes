@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { noteService } from '../services/note.service';
 import { assignmentService } from '../services/assignment.service';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
+import { handleAuthError, setEmergencySaveCallback } from '../utils/auth-redirect';
+import { saveDraft, loadDraft, clearDraft, getDraftAge } from '../utils/draft-storage';
 import { Note } from '../types/note.types';
 import { Assignment } from '../types/assignment.types';
 import { User } from '../types/auth.types';
@@ -20,6 +22,10 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const [important, setImportant] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDraftNotice, setShowDraftNotice] = useState(false);
+  
+  // Timer pour l'auto-sauvegarde
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Gestion de l'assignation si l'utilisateur est destinataire
   const [myAssignment, setMyAssignment] = useState<Assignment | null>(null);
@@ -41,11 +47,78 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       // Charger l'assignation de l'utilisateur courant si la note existe
       loadMyAssignment();
     } else {
+      // Mode création : tenter de restaurer un brouillon
+      const draft = loadDraft();
+      if (draft && !draft.noteId) {
+        // C'est un brouillon de nouvelle note
+        setContent(draft.content);
+        setImportant(draft.important);
+        
+        const age = getDraftAge();
+        if (age !== null) {
+          setShowDraftNotice(true);
+          console.log(`[NoteEditor] 📂 Brouillon restauré (sauvegardé il y a ${age} min)`);
+          
+          // Cacher le message après 5 secondes
+          setTimeout(() => setShowDraftNotice(false), 5000);
+        }
+      }
+      
       // Réinitialiser si on crée une nouvelle note
       setMyAssignment(null);
       setIsCompleted(false);
     }
   }, [note?.id]); // Dépendance sur note.id au lieu de note pour recharger si l'ID change
+
+  // Auto-sauvegarde toutes les 3 secondes
+  useEffect(() => {
+    // Ne sauvegarder que si on a du contenu
+    if (!content.trim()) {
+      return;
+    }
+
+    // Annuler le timer précédent
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    // Programmer une nouvelle sauvegarde
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveDraft({
+        content,
+        important,
+        noteId: note?.id,
+      });
+    }, 3000); // 3 secondes
+
+    // Cleanup
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [content, important, note?.id]);
+
+  // Enregistrer le callback de sauvegarde d'urgence au montage
+  useEffect(() => {
+    const emergencySave = () => {
+      if (content.trim()) {
+        console.log('[NoteEditor] 🚨 Sauvegarde d\'urgence déclenchée');
+        saveDraft({
+          content,
+          important,
+          noteId: note?.id,
+        });
+      }
+    };
+
+    setEmergencySaveCallback(emergencySave);
+
+    // Cleanup: retirer le callback au démontage
+    return () => {
+      setEmergencySaveCallback(null);
+    };
+  }, [content, important, note?.id]);
 
   const loadMyAssignment = async () => {
     if (!note || !currentUser) {
@@ -66,8 +139,15 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       // Charger les noms d'utilisateurs pour toutes les assignations
       const userIds = assignments.map(a => a.user_id);
       if (userIds.length > 0) {
-        const users = await userService.getUsers(userIds);
-        setUsersMap(users);
+        try {
+          const users = await userService.getUsers(userIds);
+          setUsersMap(users);
+        } catch (err) {
+          console.error('Error loading users:', err);
+          if (handleAuthError(err)) {
+            return; // Redirection en cours
+          }
+        }
       }
       
       // Charger le nom du créateur
@@ -76,6 +156,9 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
         setCreatorName(creator.username);
       } catch (err) {
         console.error('Error loading creator:', err);
+        if (handleAuthError(err)) {
+          return; // Redirection en cours
+        }
         setCreatorName(`Utilisateur #${note.creator_id}`);
       }
       
@@ -224,6 +307,10 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       setContent('');
       setImportant(false);
       
+      // Supprimer le brouillon sauvegardé car la note est maintenant enregistrée
+      clearDraft();
+      console.log('[NoteEditor] ✅ Note sauvegardée, brouillon supprimé');
+      
       // Notifier le parent avec la note sauvegardée et si c'est une nouvelle
       if (onNoteCreated) {
         onNoteCreated(savedNote, isNew);
@@ -289,6 +376,25 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   return (
     <div className="note-editor-overlay">
       <div className="note-editor-modal">
+        {/* Message de brouillon restauré */}
+        {showDraftNotice && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#4CAF50',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}>
+            💾 Brouillon restauré !
+          </div>
+        )}
+        
         {/* Barre d'actions supérieure */}
         <div className="note-editor-actions">
           {/* Bouton Important - visible pour le créateur (existant) OU lors de la création */}
@@ -359,8 +465,20 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
           onChange={(e) => setContent(e.target.value)}
           placeholder="Écrivez votre note ici..."
           disabled={isLoading || (note && currentUser && note.creator_id !== currentUser.id)}
+          maxLength={5000}
           autoFocus
         />
+        
+        {/* Compteur de caractères */}
+        <div style={{
+          fontSize: '12px',
+          color: content.length > 4500 ? '#f44336' : '#999',
+          textAlign: 'right',
+          marginTop: '8px',
+          fontWeight: content.length > 4500 ? 'bold' : 'normal',
+        }}>
+          {content.length} / 5000 caractères
+        </div>
 
         {/* Checkbox "Marquer comme terminé" si l'utilisateur est destinataire */}
         {myAssignment && (

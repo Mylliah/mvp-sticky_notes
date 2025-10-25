@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { contactService } from '../services/contact.service';
 import { authService } from '../services/auth.service';
+import { handleAuthError } from '../utils/auth-redirect';
 import { Contact, ContactRelationship } from '../types/contact.types';
 import './ContactTabs.css';
 
@@ -37,8 +38,13 @@ export function ContactTabs({ selectedContactId, onSelectContact }: ContactTabsP
         const contactsList = await contactService.getContacts();
         setContacts(contactsList || []);
       } catch (contactErr) {
-        // Si l'appel API échoue, continuer quand même avec une liste vide
+        // Si l'appel API échoue, gérer l'erreur d'authentification
         console.error('Error loading contacts:', contactErr);
+        
+        if (handleAuthError(contactErr)) {
+          return; // Redirection en cours
+        }
+        
         setContacts([]);
       }
     } catch (err) {

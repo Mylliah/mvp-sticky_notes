@@ -8,7 +8,16 @@
   transition: all 0.2s ease;
   cursor: move;
   margin-bottom: 16px;
-  min-height: 120px;
+  height: 170px; /* HAUTEUR FIXE - toutes les cartes font exactement la même taille */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* CHANGÉ : permettre le débordement pour le menu */
+  z-index: 1; /* Z-index de base */
+}
+
+/* Carte avec menu ouvert - passe au-dessus de tout */
+.note-card.menu-open {
+  z-index: 9999;
 }
 
 .note-card:hover {
@@ -31,18 +40,42 @@
 .note-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
   font-size: 12px;
   color: #666;
+  position: relative; /* Important pour le positionnement absolu du menu */
+  z-index: 1; /* Assurer que le header est au-dessus */
+}
+
+.note-metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 32px; /* Espace à gauche pour symétrie et futurs badges */
 }
 
 .note-creator {
   font-weight: 500;
 }
 
+.note-recipients {
+  font-weight: 500;
+  color: #2196f3;
+  font-style: italic;
+}
+
+.note-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 32px; /* Espace pour le badge ✓ en haut à droite */
+}
+
 .note-date {
   font-style: italic;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Corps de la note */
@@ -53,25 +86,36 @@
   color: #333;
   white-space: pre-wrap;
   word-wrap: break-word;
-  max-height: 200px;
-  overflow: hidden;
+  overflow: hidden; /* Empêcher le débordement du texte */
   text-overflow: ellipsis;
+  flex: 1; /* Prendre l'espace restant */
+  max-height: 90px; /* Réduit encore pour correspondre à la nouvelle hauteur */
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* Limiter à 4 lignes maximum */
+  -webkit-box-orient: vertical;
+  margin-left: 32px; /* Aligné avec le texte "de créateur" et "à user" */
+  padding-right: 32px; /* Équilibrer l'espace à droite */
 }
 
-/* Bouton d'édition */
+/* Bouton d'édition - en bas à droite, visible uniquement au survol */
 .note-edit-btn {
   position: absolute;
-  top: 12px;
+  bottom: 12px;
   right: 12px;
-  background-color: transparent;
+  background: transparent;
   border: none;
-  font-size: 16px;
-  cursor: pointer;
   padding: 4px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0; /* Invisible par défaut */
+  z-index: 5;
 }
 
+/* Afficher le bouton d'édition au survol de la carte */
 .note-card:hover .note-edit-btn {
   opacity: 1;
 }
@@ -80,11 +124,11 @@
   transform: scale(1.2);
 }
 
-/* Badge important */
+/* Badge important - en haut à gauche */
 .important-badge {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  top: 12px;
+  left: 12px;
   font-size: 20px;
 }
 
@@ -92,7 +136,7 @@
 .completed-badge {
   position: absolute;
   top: 12px;
-  right: 40px; /* À gauche du bouton édition */
+  right: 12px;
   width: 24px;
   height: 24px;
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
@@ -124,4 +168,78 @@
     transform: scale(1.1);
     opacity: 0.8;
   }
+}
+
+/* Menu d'assignation */
+.assign-menu-container {
+  position: relative;
+  z-index: 1000; /* Très haut pour passer au-dessus de tout */
+}
+
+.assign-btn {
+  background: transparent;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.assign-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.1);
+}
+
+.assign-menu {
+  position: absolute; /* Retour à absolute pour simplicité */
+  top: calc(100% + 4px); /* Juste sous le bouton */
+  right: 0; /* Aligné à droite */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid #ddd;
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10001; /* Au-dessus de la carte qui est à 9999 */
+  opacity: 1; /* Complètement opaque */
+}
+
+.assign-menu-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  border-radius: 8px 8px 0 0;
+}
+
+.assign-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: white;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.assign-menu-item:hover {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+.assign-menu-item:last-child {
+  border-radius: 0 0 8px 8px;
 }

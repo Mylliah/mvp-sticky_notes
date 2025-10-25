@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { contactService } from '../services/contact.service';
 import { authService } from '../services/auth.service';
+import { handleAuthError } from '../utils/auth-redirect';
 import { ContactRelationship } from '../types/contact.types';
 import './ContactBadges.css';
 
 interface ContactBadgesProps {
   onDrop?: (noteId: number, contactId: number) => void;
+  refreshTrigger?: number; // Incrémenter ce nombre force un rechargement
 }
 
-export default function ContactBadges({ onDrop }: ContactBadgesProps) {
+export default function ContactBadges({ onDrop, refreshTrigger = 0 }: ContactBadgesProps) {
   const [contacts, setContacts] = useState<ContactRelationship[]>([]);
   const [currentUser, setCurrentUser] = useState<{ id: number; username: string } | null>(null);
   const [dragOverContactId, setDragOverContactId] = useState<number | null>(null);
@@ -16,7 +18,7 @@ export default function ContactBadges({ onDrop }: ContactBadgesProps) {
 
   useEffect(() => {
     loadContactsAndCurrentUser();
-  }, []);
+  }, [refreshTrigger]); // Recharger quand refreshTrigger change
 
   const loadContactsAndCurrentUser = async () => {
     try {
@@ -37,6 +39,12 @@ export default function ContactBadges({ onDrop }: ContactBadgesProps) {
         setContacts(contactsList || []);
       } catch (contactErr) {
         console.error('[ContactBadges] Error loading contacts:', contactErr);
+        
+        // Gérer les erreurs d'authentification
+        if (handleAuthError(contactErr)) {
+          return; // Redirection en cours
+        }
+        
         setContacts([]);
       }
     } catch (err) {
