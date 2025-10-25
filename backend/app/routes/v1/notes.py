@@ -19,9 +19,15 @@ def create_note():
     data = request.get_json()
     if not data or not data.get("content"):
         abort(400, description="Missing content")
+    
+    # Limiter la longueur du contenu à 5000 caractères
+    content = data["content"]
+    if len(content) > 5000:
+        abort(400, description="Content too long (max 5000 characters)")
+    
     current_user_id = int(get_jwt_identity())
     note = Note(
-        content=data["content"],
+        content=content,
         creator_id=current_user_id,
         important=data.get("important", False)
     )
@@ -334,7 +340,13 @@ def update_note(note_id):
     data = request.get_json()
     if not data or "content" not in data:
         abort(400, description="Missing content")
-    note.content = data["content"]
+    
+    # Limiter la longueur du contenu à 5000 caractères
+    content = data["content"]
+    if len(content) > 5000:
+        abort(400, description="Content too long (max 5000 characters)")
+    
+    note.content = content
     if "important" in data:
         note.important = data["important"]
     note.update_date = datetime.now(timezone.utc)
