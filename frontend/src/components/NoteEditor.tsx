@@ -325,12 +325,16 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const handleDelete = async () => {
     if (!note) return;
     
-    // Si l'utilisateur est le destinataire (pas le créateur), supprimer seulement l'assignation
+    // Tout le monde (créateur et destinataire) supprime seulement son assignation
     const isCreator = currentUser && note.creator_id === currentUser.id;
     
-    if (!isCreator && myAssignment) {
-      // Destinataire : supprimer l'assignation
-      if (!window.confirm('Êtes-vous sûr de vouloir retirer cette note de votre liste ?')) {
+    if (myAssignment) {
+      // Supprimer l'assignation (pour destinataire ET créateur)
+      const message = isCreator 
+        ? 'Êtes-vous sûr de vouloir retirer cette note de votre liste ? Elle restera visible pour les destinataires.'
+        : 'Êtes-vous sûr de vouloir retirer cette note de votre liste ?';
+      
+      if (!window.confirm(message)) {
         return;
       }
       
@@ -350,8 +354,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
         setIsLoading(false);
       }
     } else if (isCreator) {
-      // Créateur : supprimer la note complètement
-      if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette note ? Elle sera supprimée pour tous les destinataires.')) {
+      // Si le créateur n'a pas d'assignation (note non auto-assignée), on peut supprimer complètement
+      if (!window.confirm('Êtes-vous sûr de vouloir supprimer définitivement cette note ? Elle sera supprimée pour tous les destinataires.')) {
         return;
       }
 

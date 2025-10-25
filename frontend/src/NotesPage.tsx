@@ -263,7 +263,36 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   };
 
   const handleDeleteNote = async (noteId: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+    const currentUserId = authService.getCurrentUser()?.id;
+    if (!currentUserId) return;
+    
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    const isCreator = note.creator_id === currentUserId;
+    const assignments = assignmentsMap.get(noteId) || [];
+    const myAssignment = assignments.find(a => a.user_id === currentUserId);
+    
+    // Si l'utilisateur a une assignation, on la supprime (créateur ou destinataire)
+    if (myAssignment) {
+      const message = isCreator
+        ? 'Êtes-vous sûr de vouloir retirer cette note de votre liste ? Elle restera visible pour les destinataires.'
+        : 'Êtes-vous sûr de vouloir retirer cette note de votre liste ?';
+      
+      if (!window.confirm(message)) return;
+      
+      try {
+        await assignmentService.deleteAssignment(myAssignment.id);
+        loadNotes();
+      } catch (err) {
+        alert('Erreur lors de la suppression de l\'assignation');
+      }
+    } else if (isCreator) {
+      // Si le créateur n'a pas d'assignation (rare), on peut supprimer la note complètement
+      if (!window.confirm('Êtes-vous sûr de vouloir supprimer définitivement cette note ? Elle sera supprimée pour tous les destinataires.')) {
+        return;
+      }
+      
       try {
         await noteService.deleteNote(noteId);
         loadNotes();

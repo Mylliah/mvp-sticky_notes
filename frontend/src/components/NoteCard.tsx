@@ -93,9 +93,23 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       // Charger les noms des destinataires
       if (assignments && assignments.length > 0) {
         try {
-          // Charger les noms de tous les destinataires
+          // Si je ne suis PAS le créateur, ne montrer que ma propre assignation
+          let assignmentsToShow = assignments;
+          if (!isMyNote && currentUser) {
+            assignmentsToShow = assignments.filter(
+              (assignment) => assignment.user_id === currentUser.id
+            );
+          }
+          
+          // Si aucune assignation à afficher, on arrête
+          if (assignmentsToShow.length === 0) {
+            setRecipientsText('');
+            return;
+          }
+          
+          // Charger les noms des destinataires à afficher
           const recipientNames = await Promise.all(
-            assignments.map(async (assignment) => {
+            assignmentsToShow.map(async (assignment) => {
               // Si c'est moi, afficher "Moi"
               if (currentUser && assignment.user_id === currentUser.id) {
                 return 'Moi';
