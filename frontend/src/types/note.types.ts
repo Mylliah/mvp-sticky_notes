@@ -7,6 +7,7 @@ export interface Note {
   created_date: string;
   update_date: string | null;
   delete_date: string | null;
+  deleted_by: number | null;
 }
 
 export interface CreateNoteRequest {

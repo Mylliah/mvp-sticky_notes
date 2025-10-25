@@ -102,6 +102,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
               }
               
               try {
+                // D'abord chercher le nickname dans la liste des contacts
+                const contact = contacts.find(c => c.id === assignment.user_id);
+                if (contact && contact.nickname) {
+                  return contact.nickname;
+                }
+                
+                // Sinon, charger depuis l'API
                 const user = await userService.getUser(assignment.user_id);
                 return user.username;
               } catch (err) {
