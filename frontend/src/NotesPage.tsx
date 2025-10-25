@@ -89,19 +89,43 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         params.q = searchQuery;
       }
 
-      // Filtrer par contact sélectionné
-      if (selectedContactId !== null) {
-        params.creator_id = selectedContactId;
-      }
-
+      // Ne pas filtrer par creator_id si on filtre par contact
+      // On va filtrer côté client après avoir chargé les assignations
+      
       const data = await noteService.getNotes(params);
       console.log('[NotesPage] Notes loaded:', data.notes?.length || 0);
-      setNotes(data.notes || []);
+      
+      let notesToDisplay = data.notes || [];
 
       // Charger toutes les assignations pour les notes chargées
-      if (data.notes && data.notes.length > 0) {
-        await loadAssignments(data.notes);
+      if (notesToDisplay && notesToDisplay.length > 0) {
+        const loadedAssignmentsMap = await loadAssignments(notesToDisplay);
+        
+        // Filtrer par contact sélectionné APRÈS avoir chargé les assignations
+        if (selectedContactId !== null && loadedAssignmentsMap) {
+          const currentUserId = authService.getCurrentUser()?.id;
+          
+          notesToDisplay = notesToDisplay.filter((note: Note) => {
+            // Vérifier si la note est créée par le contact
+            if (note.creator_id === selectedContactId) {
+              return true;
+            }
+            
+            // Vérifier si la note est créée par moi et assignée au contact
+            if (note.creator_id === currentUserId) {
+              const noteAssignments = loadedAssignmentsMap.get(note.id) || [];
+              return noteAssignments.some(
+                (assignment: Assignment) => assignment.user_id === selectedContactId
+              );
+            }
+            
+            return false;
+          });
+          console.log('[NotesPage] Filtered by contact:', selectedContactId, '→', notesToDisplay.length, 'notes');
+        }
       }
+      
+      setNotes(notesToDisplay);
     } catch (err) {
       console.error('[NotesPage] Error loading notes:', err);
       
@@ -121,7 +145,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const loadAssignments = async (notesToLoad: Note[]) => {
     try {
       const currentUser = authService.getCurrentUser();
-      if (!currentUser) return;
+      if (!currentUser) return new Map<number, Assignment[]>();
 
       console.log('[NotesPage] Loading assignments for', notesToLoad.length, 'notes');
       
@@ -143,6 +167,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
       setAssignmentsMap(newAssignmentsMap);
       console.log('[NotesPage] Assignments loaded for', newAssignmentsMap.size, 'notes');
+      return newAssignmentsMap;
     } catch (err) {
       console.error('[NotesPage] Error in loadAssignments:', err);
     }
@@ -318,6 +343,40 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const handleShowAllNotes = () => {
     setActiveFilter('all');
     setSearchQuery('');
+    setSelectedContactId(null);
+  };
+
+  const handleContactClick = (contactId: number) => {
+    console.log('[NotesPage] Filtering by contact:', contactId);
+    setSelectedContactId(contactId);
+    setActiveFilter('all'); // Reset autres filtres
+    setSearchQuery('');
+    
+    addToast({
+      message: `Affichage des notes avec ce contact`,
+      type: 'info',
+      duration: 3000,
+    });
+  };
+
+  // Obtenir le titre de la page en fonction du contact sélectionné
+  const getPageTitle = () => {
+    if (selectedContactId === null) {
+      return 'Mes Notes';
+    }
+    
+    // Si c'est l'utilisateur lui-même
+    if (currentUser && selectedContactId === currentUser.id) {
+      return 'Mes Notes';
+    }
+    
+    // Chercher le contact dans la liste
+    const contact = contactsList.find(c => c.id === selectedContactId);
+    if (contact) {
+      return `Notes avec ${contact.nickname}`;
+    }
+    
+    return 'Mes Notes';
   };
 
   return (
@@ -336,7 +395,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       <div className="main-content">
         <header className="notes-header">
           <div className="header-left">
-            <h1>Mes Notes</h1>
+            <h1>{getPageTitle()}</h1>
             {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
           </div>
           <div className="header-right">
@@ -396,6 +455,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       <ContactBadges 
         onDrop={handleNoteDrop}
         refreshTrigger={contactsRefreshTrigger}
+        onContactClick={handleContactClick}
+        selectedContactId={selectedContactId}
       />
 
       {/* Toast Container */}

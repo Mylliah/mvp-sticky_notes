@@ -8,9 +8,11 @@ import './ContactBadges.css';
 interface ContactBadgesProps {
   onDrop?: (noteId: number, contactId: number) => void;
   refreshTrigger?: number; // Incrémenter ce nombre force un rechargement
+  onContactClick?: (contactId: number) => void; // Nouveau callback pour filtrer par contact
+  selectedContactId?: number | null; // ID du contact sélectionné pour l'effet visuel
 }
 
-export default function ContactBadges({ onDrop, refreshTrigger = 0 }: ContactBadgesProps) {
+export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactClick, selectedContactId }: ContactBadgesProps) {
   const [contacts, setContacts] = useState<ContactRelationship[]>([]);
   const [currentUser, setCurrentUser] = useState<{ id: number; username: string } | null>(null);
   const [dragOverContactId, setDragOverContactId] = useState<number | null>(null);
@@ -120,10 +122,13 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0 }: ContactBad
         {/* Badge "Moi" */}
         {currentUser && (
           <div
-            className={`contact-badge me ${dragOverContactId === currentUser.id ? 'drag-over' : ''}`}
+            className={`contact-badge me ${dragOverContactId === currentUser.id ? 'drag-over' : ''} ${selectedContactId === currentUser.id ? 'selected' : ''}`}
             onDragOver={(e) => handleDragOver(e, currentUser.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, currentUser.id)}
+            onClick={() => onContactClick && onContactClick(currentUser.id)}
+            style={{ cursor: onContactClick ? 'pointer' : 'default' }}
+            title="Voir toutes mes notes"
           >
             <div className="contact-avatar" style={{ background: '#f5576c' }}>
               {getInitials(currentUser.username)}
@@ -138,10 +143,13 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0 }: ContactBad
           .map((contact, index) => (
             <div
               key={contact.contact_user_id}
-              className={`contact-badge ${dragOverContactId === contact.contact_user_id ? 'drag-over' : ''}`}
+              className={`contact-badge ${dragOverContactId === contact.contact_user_id ? 'drag-over' : ''} ${selectedContactId === contact.contact_user_id ? 'selected' : ''}`}
               onDragOver={(e) => handleDragOver(e, contact.contact_user_id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, contact.contact_user_id)}
+              onClick={() => onContactClick && onContactClick(contact.contact_user_id)}
+              style={{ cursor: onContactClick ? 'pointer' : 'default' }}
+              title={`Voir toutes les notes avec ${contact.nickname || contact.username}`}
             >
               <div 
                 className="contact-avatar"

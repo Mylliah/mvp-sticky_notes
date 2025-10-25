@@ -4,9 +4,10 @@ import './LoginPage.css';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
+  onSwitchToRegister?: () => void;
 }
 
-export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
+export default function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +88,21 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <p><strong>Email:</strong> alice@test.com</p>
             <p><strong>Mot de passe:</strong> password123</p>
           </div>
+
+          {onSwitchToRegister && (
+            <div className="login-footer">
+              <p>
+                Pas encore de compte ?{' '}
+                <button
+                  type="button"
+                  className="switch-link"
+                  onClick={onSwitchToRegister}
+                >
+                  S'inscrire
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -161,6 +161,16 @@
   color: #555;
 }
 
+.info-section.deleted-info {
+  background-color: rgba(255, 87, 87, 0.1);
+  border-left: 3px solid #ff5757;
+}
+
+.delete-date {
+  font-size: 12px;
+  color: #999;
+}
+
 .assignments-list {
   display: flex;
   flex-direction: column;

@@ -528,6 +528,17 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
               <strong>Créateur :</strong> {creatorName || `Utilisateur #${note.creator_id}`}
             </div>
 
+            {note.deleted_by && (
+              <div className="info-section deleted-info">
+                <strong>🗑️ Supprimé par :</strong> {usersMap.get(note.deleted_by)?.username || `Utilisateur #${note.deleted_by}`}
+                {note.delete_date && (
+                  <span className="delete-date">
+                    {' '}le {new Date(note.delete_date).toLocaleDateString('fr-FR')} à {new Date(note.delete_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            )}
+
             {allAssignments.length > 0 && (
               <div className="info-section">
                 <strong>📤 Assignations ({allAssignments.length}) :</strong>
