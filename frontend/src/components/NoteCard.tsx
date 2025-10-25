@@ -16,9 +16,10 @@ interface NoteCardProps {
   assignments?: Assignment[]; // Pré-chargé par le parent
   onAssign?: (noteId: number, contactId: number) => void; // Nouveau callback pour l'assignation
   contacts?: Array<{ id: number; nickname: string }>; // Liste des contacts disponibles
+  isOrphan?: boolean; // Indique si la note est orpheline (sans assignation)
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [], onAssign, contacts = [] }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [], onAssign, contacts = [], isOrphan = false }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -208,12 +209,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
 
   return (
     <div 
-      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''}`}
+      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''} ${isOrphan ? 'orphan' : ''}`}
       draggable={true}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={() => onClick && onClick(note)}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
+      title={isOrphan ? '⚠️ Note sans assignation - Peut être supprimée définitivement' : ''}
     >
       {/* En-tête avec créateur et date */}
       <div className="note-header">

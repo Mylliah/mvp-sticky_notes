@@ -243,3 +243,25 @@
 .assign-menu-item:last-child {
   border-radius: 0 0 8px 8px;
 }
+
+/* Note orpheline (sans assignation) - Mise en surbrillance */
+.note-card.orphan {
+  border: 3px solid #ff9800; /* Bordure orange vif */
+  box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4); /* Ombre orangée */
+  background-color: #fff3e0; /* Fond légèrement orangé */
+  animation: pulse-orphan 2s ease-in-out infinite;
+}
+
+@keyframes pulse-orphan {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.6);
+  }
+}
+
+.note-card.orphan:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.5);
+}

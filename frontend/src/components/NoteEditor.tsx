@@ -37,6 +37,12 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
   const [usersMap, setUsersMap] = useState<Map<number, User>>(new Map());
   const [creatorName, setCreatorName] = useState<string>('');
+  const [deletionHistory, setDeletionHistory] = useState<Array<{
+    user_id: number;
+    username: string;
+    deleted_date: string;
+    deleted_by: number;
+  }>>([]);
 
   // Charger la note si on est en mode édition
   useEffect(() => {
@@ -98,6 +104,13 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       }
     };
   }, [content, important, note?.id]);
+
+  // Charger l'historique des suppressions quand le panel d'info s'ouvre
+  useEffect(() => {
+    if (showInfoPanel && note) {
+      loadDeletionHistory();
+    }
+  }, [showInfoPanel, note?.id]);
 
   // Enregistrer le callback de sauvegarde d'urgence au montage
   useEffect(() => {
@@ -188,6 +201,38 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       }
     } catch (err) {
       console.error('❌ Error loading assignment:', err);
+    }
+  };
+
+  const loadDeletionHistory = async () => {
+    if (!note || !currentUser) {
+      return;
+    }
+    
+    // Seulement le créateur peut voir l'historique des suppressions
+    if (note.creator_id !== currentUser.id) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/v1/notes/${note.id}/deletion-history`, {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load deletion history');
+      }
+      
+      const data = await response.json();
+      setDeletionHistory(data.deletions || []);
+      console.log('📜 Historique des suppressions chargé:', data.deletions);
+    } catch (err) {
+      console.error('❌ Error loading deletion history:', err);
+      if (handleAuthError(err)) {
+        return; // Redirection en cours
+      }
     }
   };
 
@@ -609,6 +654,27 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             {allAssignments.length === 0 && (
               <div className="info-section">
                 <em>Cette note n'est assignée à personne</em>
+              </div>
+            )}
+
+            {/* Historique des suppressions (visible uniquement par le créateur) */}
+            {currentUser && note.creator_id === currentUser.id && deletionHistory.length > 0 && (
+              <div className="info-section deletion-history">
+                <strong>Suppressions ({deletionHistory.length}) :</strong>
+                <div className="deletions-list">
+                  {deletionHistory.map((deletion, index) => (
+                    <div key={index} className="deletion-item">
+                      <span className="deletion-user">
+                        👤 {deletion.username}
+                      </span>
+                      {deletion.deleted_date && (
+                        <span className="deletion-date">
+                          {' '}a supprimé le {new Date(deletion.deleted_date).toLocaleDateString('fr-FR')} à {new Date(deletion.deleted_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

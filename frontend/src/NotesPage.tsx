@@ -32,6 +32,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showArchive, setShowArchive] = useState(false); // Vue Archive
   
   // Filtre par contact
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
@@ -58,13 +59,33 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       activeFilter, 
       sortOrder, 
       searchQuery, 
-      selectedContactId 
+      selectedContactId,
+      showArchive
     });
     
     setLoading(true);
     setError(null);
     
     try {
+      // Si on est en vue Archive, appeler la route spécifique
+      if (showArchive) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/v1/notes/orphans`, {
+          headers: {
+            'Authorization': `Bearer ${authService.getToken()}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to load orphan notes');
+        }
+        
+        const data = await response.json();
+        console.log('[NotesPage] Orphan notes loaded:', data.count);
+        setNotes(data.notes || []);
+        setLoading(false);
+        return;
+      }
+      
       const params: any = {
         sort_by: 'created_date',
         sort_order: sortOrder,
@@ -206,7 +227,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   useEffect(() => {
     loadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, sortOrder, searchQuery, selectedContactId]);
+  }, [activeFilter, sortOrder, searchQuery, selectedContactId, showArchive]);
 
   const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
     setShowEditor(false);
@@ -373,6 +394,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     setActiveFilter('all');
     setSearchQuery('');
     setSelectedContactId(null);
+    setShowArchive(false);
+  };
+
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
+    setShowArchive(false); // Réinitialiser l'archive quand on change de filtre
   };
 
   const handleContactClick = (contactId: number) => {
@@ -390,6 +417,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Obtenir le titre de la page en fonction du contact sélectionné
   const getPageTitle = () => {
+    if (showArchive) {
+      return 'Archives - Sans assignation';
+    }
+    
     if (selectedContactId === null) {
       return 'Mes Notes';
     }
@@ -418,7 +449,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         }}
         onShowAllNotes={handleShowAllNotes}
         onManageContacts={() => setShowContactsManager(true)}
-        activeView={activeFilter === 'all' && !searchQuery ? 'all' : 'filtered'}
+        onShowArchive={() => {
+          setShowArchive(true);
+          setActiveFilter('all');
+          setSearchQuery('');
+          setSelectedContactId(null);
+        }}
+        activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
       <div className="main-content">
@@ -438,7 +475,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
       {/* Barre de filtres */}
       <FilterBar
-        onFilterChange={setActiveFilter}
+        onFilterChange={handleFilterChange}
         onSortChange={setSortOrder}
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
@@ -474,6 +511,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 assignments={assignmentsMap.get(note.id) || []}
                 onAssign={handleNoteDrop}
                 contacts={contactsList}
+                isOrphan={(note as any).is_orphan || false}
               />
             ))}
           </div>
