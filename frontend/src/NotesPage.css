@@ -62,6 +62,138 @@
   transform: translateY(-2px);
 }
 
+/* Bouton de mode sélection */
+.selection-mode-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selection-mode-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.selection-mode-btn.active {
+  background-color: #4CAF50;
+  border-color: #45a049;
+}
+
+/* Barre d'outils de sélection */
+.selection-toolbar {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.selection-info {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.selection-action-btn {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.selection-action-btn:hover:not(:disabled) {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+  transform: translateY(-1px);
+}
+
+.selection-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selection-action-btn.primary {
+  background-color: #2196F3;
+  color: white;
+  border-color: #1976D2;
+}
+
+.selection-action-btn.primary:hover:not(:disabled) {
+  background-color: #1976D2;
+}
+
+.selection-action-btn.danger {
+  background-color: #f44336;
+  color: white;
+  border-color: #d32f2f;
+}
+
+.selection-action-btn.danger:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.selection-action-btn.cancel {
+  background-color: transparent;
+  border-color: #999;
+}
+
+.batch-assign-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.batch-assign-dropdown select {
+  background-color: #4CAF50;
+  color: white;
+  border: 1px solid #45a049;
+  border-radius: 6px;
+  padding: 8px 32px 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.batch-assign-dropdown select:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.batch-assign-dropdown select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 /* Contenu */
 .notes-content {
   min-height: 400px;

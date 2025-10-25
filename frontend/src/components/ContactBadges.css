@@ -72,6 +72,17 @@
   background-color: #e3f2fd;
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  animation: dragOverPulse 1s ease-in-out infinite;
+}
+
+/* Animation de pulsation pendant le drag-over */
+@keyframes dragOverPulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.5);
+  }
 }
 
 .contact-avatar {

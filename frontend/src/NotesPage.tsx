@@ -37,6 +37,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   // Filtre par contact
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
+  // Mode sélection multiple
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<Set<number>>(new Set());
+
   // Drag & Drop
   const [draggedNote, setDraggedNote] = useState<Note | null>(null);
 
@@ -415,6 +419,95 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     });
   };
 
+  // === SÉLECTION MULTIPLE ===
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedNotes(new Set()); // Clear sélection quand on change de mode
+  };
+
+  const toggleNoteSelection = (noteId: number) => {
+    const newSelection = new Set(selectedNotes);
+    if (newSelection.has(noteId)) {
+      newSelection.delete(noteId);
+    } else {
+      newSelection.add(noteId);
+    }
+    setSelectedNotes(newSelection);
+  };
+
+  const selectAllNotes = () => {
+    const allNoteIds = new Set(notes.map(note => note.id));
+    setSelectedNotes(allNoteIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedNotes(new Set());
+  };
+
+  const handleBatchAssign = async (contactId: number) => {
+    if (selectedNotes.size === 0) return;
+
+    try {
+      // Assigner toutes les notes sélectionnées
+      const noteIds = Array.from(selectedNotes) as number[];
+      const promises = noteIds.map(noteId =>
+        assignmentService.createAssignment({ note_id: noteId, user_id: contactId })
+      );
+      
+      await Promise.all(promises);
+      
+      addToast({
+        message: `${selectedNotes.size} note(s) assignée(s) avec succès`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      // Clear sélection et recharger
+      clearSelection();
+      setSelectionMode(false);
+      loadNotes();
+    } catch (err) {
+      console.error('Error batch assigning:', err);
+      addToast({
+        message: 'Erreur lors de l\'assignation groupée',
+        type: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedNotes.size === 0) return;
+    
+    if (!window.confirm(`Supprimer ${selectedNotes.size} note(s) ?`)) return;
+
+    try {
+      const noteIds = Array.from(selectedNotes) as number[];
+      const promises = noteIds.map(noteId =>
+        noteService.deleteNote(noteId)
+      );
+      
+      await Promise.all(promises);
+      
+      addToast({
+        message: `${selectedNotes.size} note(s) supprimée(s)`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      clearSelection();
+      setSelectionMode(false);
+      loadNotes();
+    } catch (err) {
+      console.error('Error batch deleting:', err);
+      addToast({
+        message: 'Erreur lors de la suppression groupée',
+        type: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
   // Obtenir le titre de la page en fonction du contact sélectionné
   const getPageTitle = () => {
     if (showArchive) {
@@ -465,6 +558,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
           </div>
           <div className="header-right">
+            <button 
+              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
+              onClick={toggleSelectionMode}
+              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
+            >
+              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
+            </button>
             {onLogout && (
               <button className="logout-btn" onClick={onLogout}>
                 🚪 Déconnexion
@@ -480,6 +580,72 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
       />
+
+      {/* Barre d'actions pour sélection multiple */}
+      {selectionMode && (
+        <div className="selection-toolbar">
+          <div className="selection-info">
+            <span className="selection-count">
+              {selectedNotes.size} note(s) sélectionnée(s)
+            </span>
+          </div>
+          
+          <div className="selection-actions">
+            <button
+              className="selection-action-btn"
+              onClick={selectAllNotes}
+              disabled={selectedNotes.size === notes.length}
+            >
+              Tout sélectionner
+            </button>
+            
+            <button
+              className="selection-action-btn"
+              onClick={clearSelection}
+              disabled={selectedNotes.size === 0}
+            >
+              Désélectionner
+            </button>
+
+            {contactsList.length > 0 && (
+              <div className="batch-assign-dropdown">
+                <select
+                  className="selection-action-btn"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBatchAssign(Number(e.target.value));
+                      e.target.value = '';
+                    }
+                  }}
+                  disabled={selectedNotes.size === 0}
+                >
+                  <option value="">Assigner à...</option>
+                  {contactsList.map(contact => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.nickname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              className="selection-action-btn delete-btn"
+              onClick={handleBatchDelete}
+              disabled={selectedNotes.size === 0}
+            >
+              Supprimer
+            </button>
+
+            <button
+              className="selection-action-btn cancel-btn"
+              onClick={toggleSelectionMode}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Zone de contenu */}
       <div className="notes-content">
@@ -499,7 +665,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
         {!loading && notes.length > 0 && (
           <div className="notes-grid">
-            {notes.map((note) => (
+            {notes.map((note, index) => (
               <NoteCard
                 key={note.id}
                 note={note}
@@ -512,6 +678,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 onAssign={handleNoteDrop}
                 contacts={contactsList}
                 isOrphan={(note as any).is_orphan || false}
+                selectionMode={selectionMode}
+                isSelected={selectedNotes.has(note.id)}
+                onToggleSelect={() => toggleNoteSelection(note.id)}
               />
             ))}
           </div>
