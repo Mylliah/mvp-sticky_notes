@@ -10,7 +10,7 @@ import './NoteEditor.css';
 
 interface NoteEditorProps {
   note?: Note | null;
-  onNoteCreated?: () => void;
+  onNoteCreated?: (note: Note, isNew: boolean) => void; // Passer la note et indiquer si nouvelle
   onNoteDeleted?: () => void;
   onClose?: () => void;
 }
@@ -118,8 +118,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       setMyAssignment(updatedAssignment);
       
       // Mettre à jour aussi dans la liste complète des assignations
-      setAllAssignments(prev => 
-        prev.map(a => a.id === assignmentId ? updatedAssignment : a)
+      setAllAssignments((prev: Assignment[]) => 
+        prev.map((a: Assignment) => a.id === assignmentId ? updatedAssignment : a)
       );
       
       console.log('✅ État local mis à jour');
@@ -136,13 +136,10 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     try {
       await assignmentService.deleteAssignment(assignmentId);
       
-      // Recharger les assignations
+      // Recharger les assignations de cette note
       await loadMyAssignment();
       
-      // Notifier le parent pour rafraîchir la liste
-      if (onNoteCreated) {
-        onNoteCreated();
-      }
+      // La mise à jour visuelle se fera automatiquement via le state local
     } catch (err) {
       setError('Erreur lors de la suppression de l\'assignation');
       console.error('❌ Error deleting assignment:', err);
@@ -168,6 +165,34 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     }
   };
 
+  const handleTogglePriority = async () => {
+    if (!myAssignment) return;
+    
+    try {
+      console.log('🌟 Toggle priorité pour assignation', myAssignment.id, '- État actuel:', myAssignment.recipient_priority);
+      
+      // Utiliser la méthode dédiée togglePriority
+      const updatedAssignment = await assignmentService.togglePriority(myAssignment.id);
+      
+      console.log('✅ Priorité mise à jour:', updatedAssignment);
+      console.log('📌 Nouvelle valeur recipient_priority:', updatedAssignment.recipient_priority);
+      
+      // Mettre à jour l'état local immédiatement
+      setMyAssignment(updatedAssignment);
+      
+      // Mettre à jour aussi dans la liste complète des assignations pour le panel d'info
+      setAllAssignments((prev: Assignment[]) => 
+        prev.map((a: Assignment) => a.id === updatedAssignment.id ? updatedAssignment : a)
+      );
+      
+      console.log('🔄 État React mis à jour !');
+      
+    } catch (err) {
+      setError('Erreur lors de la mise à jour de la priorité');
+      console.error('❌ Erreur togglePriority:', err);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!content.trim()) {
       setError('Le contenu de la note ne peut pas être vide');
@@ -178,15 +203,18 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     setError(null);
 
     try {
+      let savedNote: Note;
+      const isNew = !note;
+      
       if (note) {
         // Mode édition
-        await noteService.updateNote(note.id, {
+        savedNote = await noteService.updateNote(note.id, {
           content: content.trim(),
           important,
         });
       } else {
         // Mode création
-        await noteService.createNote({
+        savedNote = await noteService.createNote({
           content: content.trim(),
           important,
         });
@@ -196,9 +224,9 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       setContent('');
       setImportant(false);
       
-      // Notifier le parent
+      // Notifier le parent avec la note sauvegardée et si c'est une nouvelle
       if (onNoteCreated) {
-        onNoteCreated();
+        onNoteCreated(savedNote, isNew);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde de la note');
@@ -263,9 +291,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       <div className="note-editor-modal">
         {/* Barre d'actions supérieure */}
         <div className="note-editor-actions">
-          {/* Bouton Important/Priorité - visible seulement pour le créateur OU bouton priorité pour destinataire */}
-          {currentUser && note && note.creator_id === currentUser.id ? (
-            // Créateur : bouton important
+          {/* Bouton Important - visible pour le créateur (existant) OU lors de la création */}
+          {currentUser && (!note || note.creator_id === currentUser.id) && (
             <button
               className="action-btn"
               onClick={() => setImportant(!important)}
@@ -273,16 +300,18 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             >
               {important ? '❗' : '❕'}
             </button>
-          ) : myAssignment ? (
-            // Destinataire : afficher la priorité (lecture seule)
+          )}
+          
+          {/* Bouton Priorité - visible si l'utilisateur a une assignation (même s'il est créateur) */}
+          {myAssignment && (
             <button
               className="action-btn"
-              disabled
-              title={myAssignment.recipient_priority ? "Priorité haute" : "Priorité normale"}
+              onClick={handleTogglePriority}
+              title={myAssignment.recipient_priority ? "Retirer la priorité" : "Marquer comme prioritaire"}
             >
               {myAssignment.recipient_priority ? '⭐' : '☆'}
             </button>
-          ) : null}
+          )}
           
           {/* Bouton Sauvegarder - visible seulement pour le créateur ou nouvelle note */}
           {(!note || (currentUser && note.creator_id === currentUser.id)) && (
@@ -418,7 +447,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                                 🏁 Terminé le {new Date(assignment.finished_date).toLocaleDateString('fr-FR')} à {new Date(assignment.finished_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             )}
-                            {assignment.recipient_priority && (
+                            {/* La priorité est personnelle : visible uniquement pour le destinataire concerné */}
+                            {assignment.recipient_priority && isMe && (
                               <span className="assignment-priority">
                                 ⭐ Prioritaire
                               </span>
