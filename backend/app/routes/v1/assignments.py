@@ -177,10 +177,13 @@ def delete_assignment(assignment_id):
     assignment = Assignment.query.get_or_404(assignment_id)
     current_user_id = int(get_jwt_identity())
     
-    # Seul le créateur de la note peut supprimer une assignation
+    # Le créateur de la note OU le destinataire peut supprimer l'assignation
     note = db.session.get(Note, assignment.note_id)
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can delete assignments")
+    is_creator = note.creator_id == current_user_id
+    is_recipient = assignment.user_id == current_user_id
+    
+    if not is_creator and not is_recipient:
+        abort(403, description="Only the creator or the recipient can delete this assignment")
     
     # Sauvegarder info pour le log
     note_id = assignment.note_id
