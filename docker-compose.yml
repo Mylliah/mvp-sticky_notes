@@ -26,10 +26,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Évite d'écraser node_modules
+      - ./frontend:/app          # Monte le code pour hot-reload
+      - /app/node_modules        # Protège node_modules
     ports:
-      - "3000:3000"
+      - "3001:3000"  # Port 3001 (3000 a un bug avec docker-compose)
     environment:
       - NODE_ENV=development
     depends_on:
