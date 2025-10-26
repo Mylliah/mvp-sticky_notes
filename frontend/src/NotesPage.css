@@ -35,9 +35,14 @@ body.dark-mode {
 .main-content {
   flex: 1;
   margin-left: 80px; /* Largeur de la sidebar */
-  margin-right: 0; /* Aucun margin par défaut, la sidebar contacts est en position fixed */
+  margin-right: 0;
   padding: 24px;
   transition: margin-right 0.3s ease;
+}
+
+/* Quand la sidebar contacts est ouverte, réduire la largeur du contenu */
+.main-content.contacts-open {
+  margin-right: 280px; /* Largeur de la sidebar contacts */
 }
 
 /* En-tête */

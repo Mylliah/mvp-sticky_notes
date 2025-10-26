@@ -607,7 +607,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
-      <div className="main-content">
+      <div className={`main-content ${contactsSidebarOpen ? 'contacts-open' : ''}`}>
         <header className="notes-header">
           <div className="header-left">
             <div className="title-with-badge">
@@ -622,6 +622,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           </div>
           <div className="header-right">
             <button 
+              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
+              onClick={toggleSelectionMode}
+              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
+            >
+              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
+            </button>
+            <button 
               className={`dark-mode-btn ${darkMode ? 'active' : ''}`}
               onClick={() => setDarkMode(!darkMode)}
               title={darkMode ? "Mode clair" : "Mode sombre"}
@@ -634,13 +641,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
               title={contactsSidebarOpen ? "Masquer contacts" : "Afficher contacts"}
             >
               {contactsSidebarOpen ? '👥 →' : '← 👥'}
-            </button>
-            <button 
-              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
-              onClick={toggleSelectionMode}
-              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
-            >
-              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
             </button>
           </div>
         </header>

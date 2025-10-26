@@ -3,7 +3,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 200px;
+  width: 280px; /* Correspond au margin-right de main-content */
   background: white;
   border-left: 1px solid #e0e0e0;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
