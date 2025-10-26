@@ -365,6 +365,32 @@ def update_note(note_id):
     return note.to_dict()
 
 
+@bp.get('/notes/orphans')
+@jwt_required()
+def get_orphan_notes():
+    """
+    Récupérer les notes orphelines (sans aucune assignation active).
+    Ces notes peuvent être supprimées définitivement par le créateur.
+    """
+    current_user_id = int(get_jwt_identity())
+    
+    # Récupérer toutes les notes créées par l'utilisateur
+    my_notes = Note.query.filter_by(creator_id=current_user_id).all()
+    
+    orphan_notes = []
+    for note in my_notes:
+        # Vérifier si cette note a encore des assignations actives
+        active_assignments = Assignment.query.filter_by(note_id=note.id).count()
+        
+        if active_assignments == 0:
+            # Note sans assignation = note orpheline
+            note_dict = note.to_dict()
+            note_dict['is_orphan'] = True
+            orphan_notes.append(note_dict)
+    
+    return {"notes": orphan_notes, "count": len(orphan_notes)}
+
+
 @bp.delete('/notes/<int:note_id>')
 @jwt_required()
 def delete_note(note_id):
@@ -401,3 +427,46 @@ def delete_note(note_id):
     db.session.commit()
     
     return note.to_dict()
+
+
+@bp.get('/notes/<int:note_id>/deletion-history')
+@jwt_required()
+def get_deletion_history(note_id):
+    """
+    Récupérer l'historique des suppressions d'assignations pour une note.
+    Accessible uniquement au créateur de la note.
+    """
+    from ...models import User
+    
+    note = Note.query.get_or_404(note_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est le créateur de la note
+    if note.creator_id != current_user_id:
+        abort(403, description="Only the creator can view deletion history")
+    
+    # Récupérer les logs de suppressions d'assignations pour cette note
+    deletion_logs = ActionLog.query.filter_by(
+        action_type="assignment_deleted"
+    ).all()
+    
+    # Filtrer ceux qui concernent cette note
+    deletions = []
+    for log in deletion_logs:
+        try:
+            payload = json.loads(log.payload)
+            if payload.get("note_id") == note_id:
+                # Récupérer le destinataire qui a supprimé
+                assigned_user_id = payload.get("assigned_user_id")
+                user = User.query.get(assigned_user_id)
+                
+                deletions.append({
+                    "user_id": assigned_user_id,
+                    "username": user.username if user else f"User #{assigned_user_id}",
+                    "deleted_date": log.timestamp.isoformat() if log.timestamp else None,
+                    "deleted_by": log.user_id,  # Qui a fait l'action (créateur ou destinataire)
+                })
+        except (json.JSONDecodeError, KeyError):
+            continue
+    
+    return {"deletions": deletions}
