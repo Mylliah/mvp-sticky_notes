@@ -68,6 +68,16 @@ export default function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginP
               />
             </div>
 
+            <div className="forgot-password-link">
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => alert('Fonctionnalité "Mot de passe oublié" à venir')}
+              >
+                Mot de passe oublié ?
+              </button>
+            </div>
+
             {error && (
               <div className="error-message">
                 {error}

@@ -123,7 +123,7 @@ export default function SettingsModal({
                 <p>Se déconnecter de votre compte</p>
               </div>
               <button className="logout-btn-settings" onClick={handleLogout}>
-                🚪 Déconnexion
+                ⏻ Déconnexion
               </button>
             </div>
           </div>
