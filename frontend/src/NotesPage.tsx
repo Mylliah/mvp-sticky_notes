@@ -4,6 +4,8 @@ import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
 import ContactsManager from './components/ContactsManager';
+import ProfileModal from './components/ProfileModal';
+import SettingsModal from './components/SettingsModal';
 import Sidebar from './components/Sidebar';
 import SkeletonCard from './components/SkeletonCard';
 import ToastContainer, { useToast } from './components/ToastContainer';
@@ -28,6 +30,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [showEditor, setShowEditor] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showContactsManager, setShowContactsManager] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [contactsRefreshTrigger, setContactsRefreshTrigger] = useState(0);
   
   // Filtres
@@ -465,12 +469,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     setSelectedContactId(contactId);
     setActiveFilter('all'); // Reset autres filtres
     setSearchQuery('');
-    
-    addToast({
-      message: `Affichage des notes avec ce contact`,
-      type: 'info',
-      duration: 3000,
-    });
   };
 
   // === SÉLECTION MULTIPLE ===
@@ -604,6 +602,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           setSearchQuery('');
           setSelectedContactId(null);
         }}
+        onShowProfile={() => setShowProfileModal(true)}
+        onShowSettings={() => setShowSettingsModal(true)}
         activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
@@ -642,11 +642,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             >
               {selectionMode ? '✓ Sélection' : '☐ Sélection'}
             </button>
-            {onLogout && (
-              <button className="logout-btn" onClick={onLogout}>
-                🚪 Déconnexion
-              </button>
-            )}
           </div>
         </header>
 
@@ -808,6 +803,23 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             // Ne PAS recharger les notes, juste forcer le rechargement des ContactBadges
             setContactsRefreshTrigger(prev => prev + 1);
           }}
+        />
+      )}
+
+      {/* Modal de profil */}
+      {showProfileModal && (
+        <ProfileModal
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
+      {/* Modal de paramètres */}
+      {showSettingsModal && (
+        <SettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          onLogout={onLogout || (() => {})}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode(!darkMode)}
         />
       )}
       </div> {/* Fermeture de main-content */}
