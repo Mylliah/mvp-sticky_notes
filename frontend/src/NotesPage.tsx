@@ -775,7 +775,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           <div className="archive-info-content">
             <strong>Vue Archives</strong>
             <p>
-              Notes créées par vous mais non assignées ou supprimées par vos contacts.
+              Ici sont stockées vos notes orphelines créées par vous, qui sont non assignées ou supprimées par vos contacts.
             </p>
           </div>
         </div>

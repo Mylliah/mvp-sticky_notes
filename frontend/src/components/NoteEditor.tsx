@@ -230,6 +230,29 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       const data = await response.json();
       setDeletionHistory(data.deletions || []);
       console.log('📜 Historique des suppressions chargé:', data.deletions);
+      
+      // Charger les utilisateurs manquants dans la map (deleted_by et user_id)
+      if (data.deletions && data.deletions.length > 0) {
+        const userIdsToLoad = new Set<number>();
+        data.deletions.forEach((deletion: any) => {
+          if (!usersMap.has(deletion.deleted_by)) {
+            userIdsToLoad.add(deletion.deleted_by);
+          }
+          if (!usersMap.has(deletion.user_id)) {
+            userIdsToLoad.add(deletion.user_id);
+          }
+        });
+        
+        if (userIdsToLoad.size > 0) {
+          try {
+            const newUsers = await userService.getUsers(Array.from(userIdsToLoad));
+            // Fusionner avec la map existante
+            setUsersMap(new Map([...usersMap, ...newUsers]));
+          } catch (err) {
+            console.error('Error loading deletion users:', err);
+          }
+        }
+      }
     } catch (err) {
       console.error('❌ Error loading deletion history:', err);
       if (handleAuthError(err)) {
@@ -639,9 +662,23 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
 
             {allAssignments.length > 0 && (
               <div className="info-section">
-                <strong>📤 Assignations ({allAssignments.length}) :</strong>
+                <strong>📤 Assignations ({
+                  // Si créateur, afficher toutes les assignations, sinon seulement la sienne
+                  currentUser && note.creator_id === currentUser.id 
+                    ? allAssignments.length 
+                    : allAssignments.filter(a => a.user_id === currentUser?.id).length
+                }) :</strong>
                 <div className="assignments-list">
-                  {allAssignments.map(assignment => {
+                  {allAssignments
+                    .filter(assignment => {
+                      // Si créateur : voir toutes les assignations
+                      // Si destinataire : voir seulement sa propre assignation
+                      if (currentUser && note.creator_id === currentUser.id) {
+                        return true;
+                      }
+                      return assignment.user_id === currentUser?.id;
+                    })
+                    .map(assignment => {
                     const assignedUser = usersMap.get(assignment.user_id);
                     const userName = assignedUser?.username || `Utilisateur #${assignment.user_id}`;
                     const isMe = assignment.user_id === currentUser?.id;
@@ -711,18 +748,35 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
               <div className="info-section deletion-history">
                 <strong>Suppressions ({deletionHistory.length}) :</strong>
                 <div className="deletions-list">
-                  {deletionHistory.map((deletion, index) => (
-                    <div key={index} className="deletion-item">
-                      <span className="deletion-user">
-                        👤 {deletion.username}
-                      </span>
-                      {deletion.deleted_date && (
-                        <span className="deletion-date">
-                          {' '}a supprimé le {new Date(deletion.deleted_date).toLocaleDateString('fr-FR')} à {new Date(deletion.deleted_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  {deletionHistory.map((deletion, index) => {
+                    // Déterminer qui a supprimé : le créateur ou le destinataire
+                    const deletedByUser = usersMap.get(deletion.deleted_by);
+                    const deletedByName = deletedByUser?.username || 
+                      (deletion.deleted_by === currentUser.id ? 'Vous' : `Utilisateur #${deletion.deleted_by}`);
+                    
+                    // Récupérer le destinataire de l'assignation
+                    const recipientUser = usersMap.get(deletion.user_id);
+                    const recipientName = recipientUser?.username || deletion.username || `Utilisateur #${deletion.user_id}`;
+                    
+                    // Message différent si le destinataire supprime sa propre assignation ou si le créateur la supprime
+                    const isSelfDeletion = deletion.deleted_by === deletion.user_id;
+                    const message = isSelfDeletion 
+                      ? `${deletedByName} a supprimé son assignation`
+                      : `${deletedByName} a supprimé l'assignation de ${recipientName}`;
+                    
+                    return (
+                      <div key={index} className="deletion-item">
+                        <span className="deletion-user">
+                          👤 {message}
                         </span>
-                      )}
-                    </div>
-                  ))}
+                        {deletion.deleted_date && (
+                          <span className="deletion-date">
+                            {' '}le {new Date(deletion.deleted_date).toLocaleDateString('fr-FR')} à {new Date(deletion.deleted_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
