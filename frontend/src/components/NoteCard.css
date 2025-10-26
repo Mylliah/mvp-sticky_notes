@@ -217,6 +217,18 @@ body.dark-mode .note-card {
   box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
 }
 
+/* Badge "terminé partiellement" - vert clair (pour le créateur quand certains contacts ont terminé) */
+.completed-badge.partial {
+  background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+  box-shadow: 0 2px 4px rgba(165, 214, 167, 0.4);
+}
+
+/* Badge "terminé complètement" - vert foncé (pour le créateur quand TOUS ont terminé, ou pour un destinataire qui a terminé) */
+.completed-badge.full {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
+}
+
 /* Badge "Nouveau" - en haut à droite (si pas de completed) */
 .new-badge {
   position: absolute;

@@ -51,12 +51,16 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAssignMenu]);
   
+  // État pour distinguer le statut de complétion (partiel vs total)
+  const [completionStatus, setCompletionStatus] = useState<'none' | 'partial' | 'full'>('none');
+
   // Calculer le statut à partir des assignations pré-chargées
   useEffect(() => {
     if (!currentUser || !assignments || assignments.length === 0) {
       setIsCompleted(false);
       setIsPriority(false);
       setIsNew(false);
+      setCompletionStatus('none');
       return;
     }
 
@@ -66,20 +70,43 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     const myAssignment = assignments.find((a: Assignment) => a.user_id === currentUser.id);
     
     if (myAssignment) {
-      const completed = myAssignment.recipient_status === 'terminé';
       const priority = myAssignment.recipient_priority === true;
-      
-      // Badge "Nouveau" si simplement non lu (peu importe la date ou le créateur)
       const isUnread = !myAssignment.is_read;
       
-      console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed, 'Priorité?', priority, 'Non lu?', isUnread);
-      setIsCompleted(completed);
+      // LOGIQUE DE LA COCHE VERTE
+      if (isMyNote) {
+        // Je suis le CRÉATEUR : vérifier le statut de TOUS les assignés
+        const totalAssignments = assignments.length;
+        const completedAssignments = assignments.filter(a => a.recipient_status === 'terminé').length;
+        
+        console.log(`[NoteCard ${note.id}] 👤 CRÉATEUR: ${completedAssignments}/${totalAssignments} terminés`);
+        
+        if (completedAssignments === 0) {
+          setIsCompleted(false);
+          setCompletionStatus('none');
+        } else if (completedAssignments === totalAssignments) {
+          setIsCompleted(true);
+          setCompletionStatus('full'); // Tous terminés = vert foncé
+        } else {
+          setIsCompleted(true);
+          setCompletionStatus('partial'); // Quelques-uns terminés = vert clair
+        }
+      } else {
+        // Je suis un DESTINATAIRE : afficher seulement MON statut
+        const myCompleted = myAssignment.recipient_status === 'terminé';
+        console.log(`[NoteCard ${note.id}] 📨 DESTINATAIRE: Mon statut =`, myCompleted ? 'terminé' : 'en cours');
+        
+        setIsCompleted(myCompleted);
+        setCompletionStatus(myCompleted ? 'full' : 'none'); // Ma coche = vert foncé
+      }
+      
       setIsPriority(priority);
       setIsNew(isUnread);
     } else {
       setIsCompleted(false);
       setIsPriority(false);
       setIsNew(false);
+      setCompletionStatus('none');
     }
   }, [note.id, currentUser, assignments, isMyNote]);
 
@@ -344,9 +371,16 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
         </button>
       )}
 
-      {/* Badge "terminé" si au moins une assignation est terminée */}
+      {/* Badge "terminé" avec couleur selon le statut */}
       {isCompleted && (
-        <div className="completed-badge" title="Terminé">
+        <div 
+          className={`completed-badge ${completionStatus === 'partial' ? 'partial' : 'full'}`}
+          title={
+            completionStatus === 'partial' 
+              ? 'Terminé partiellement (certains contacts ont terminé)' 
+              : 'Terminé'
+          }
+        >
           ✓
         </div>
       )}
