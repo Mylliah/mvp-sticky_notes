@@ -642,6 +642,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             >
               {contactsSidebarOpen ? '👥 →' : '← 👥'}
             </button>
+            <button 
+              className="logout-btn"
+              onClick={onLogout}
+              title="Déconnexion"
+            >
+              ⏻
+            </button>
           </div>
         </header>
 
@@ -817,7 +824,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       {showSettingsModal && (
         <SettingsModal
           onClose={() => setShowSettingsModal(false)}
-          onLogout={onLogout || (() => {})}
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(!darkMode)}
         />

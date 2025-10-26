@@ -3,20 +3,18 @@ import './SettingsModal.css';
 
 interface SettingsModalProps {
   onClose: () => void;
-  onLogout: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
 }
 
 export default function SettingsModal({ 
   onClose, 
-  onLogout, 
   darkMode, 
   onToggleDarkMode 
 }: SettingsModalProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem('notificationsEnabled');
-    return saved ? JSON.parse(saved) : true;
+    return saved ? JSON.parse(saved) : false; // Désactivé par défaut
   });
 
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -39,12 +37,6 @@ export default function SettingsModal({
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
-    }
-  };
-
-  const handleLogout = () => {
-    if (window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-      onLogout();
     }
   };
 
@@ -110,21 +102,6 @@ export default function SettingsModal({
                 />
                 <span className="toggle-slider"></span>
               </label>
-            </div>
-          </div>
-
-          {/* Section Compte */}
-          <div className="settings-section">
-            <h3>👤 Compte</h3>
-            
-            <div className="setting-item">
-              <div className="setting-info">
-                <strong>Déconnexion</strong>
-                <p>Se déconnecter de votre compte</p>
-              </div>
-              <button className="logout-btn-settings" onClick={handleLogout}>
-                ⏻ Déconnexion
-              </button>
             </div>
           </div>
 
