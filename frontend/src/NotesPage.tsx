@@ -173,12 +173,11 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             
             // Si on filtre par "Notes à moi-même" (selectedContactId === currentUserId)
             if (selectedContactId === currentUserId) {
-              // Afficher uniquement les notes que JE me suis assignées À MOI-MÊME
-              // = créées par moi ET assignées à moi
+              // Afficher uniquement les notes que JE me suis assignées À MOI-MÊME EXCLUSIVEMENT
+              // = créées par moi ET assignées UNIQUEMENT à moi (pas à d'autres contacts)
               return note.creator_id === currentUserId && 
-                     noteAssignments.some(
-                       (assignment: Assignment) => assignment.user_id === currentUserId
-                     );
+                     noteAssignments.length === 1 &&
+                     noteAssignments[0].user_id === currentUserId;
             }
             
             // Pour les autres contacts : afficher les notes partagées avec ce contact
@@ -283,16 +282,20 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         const list: Array<{ id: number; nickname: string }> = [];
         
         contacts.forEach(contact => {
-          console.log('[NotesPage] Contact:', contact.nickname || contact.username, 'is_self:', contact.is_self);
-          // Inclure TOUS les contacts, y compris "Moi" pour permettre l'auto-assignation
-          map.set(contact.contact_user_id, contact.nickname || contact.username);
-          list.push({
-            id: contact.contact_user_id,
-            nickname: contact.nickname || contact.username
-          });
+          console.log('[NotesPage] Contact:', contact.nickname || contact.username, 'is_self:', contact.is_self, 'is_mutual:', contact.is_mutual);
+          // Inclure seulement "Moi" (is_self) ou les contacts mutuels (is_mutual)
+          if (contact.is_self || contact.is_mutual) {
+            map.set(contact.contact_user_id, contact.nickname || contact.username);
+            list.push({
+              id: contact.contact_user_id,
+              nickname: contact.nickname || contact.username
+            });
+          } else {
+            console.log('[NotesPage] Contact excluded (not mutual):', contact.nickname || contact.username);
+          }
         });
         
-        console.log('[NotesPage] Contacts list for assignment menu:', list.length, 'contacts');
+        console.log('[NotesPage] Contacts list for assignment menu:', list.length, 'contacts (mutuels uniquement)');
         setContactsMap(map);
         setContactsList(list);
       } catch (err) {
@@ -367,7 +370,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   }, [darkMode]);
 
   const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
-    setShowEditor(false);
+    // Fermer l'éditeur seulement pour une nouvelle note
+    if (isNew) {
+      setShowEditor(false);
+    }
     
     if (isNew) {
       // Nouvelle note : l'ajouter en tête de liste
@@ -382,7 +388,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         return newMap;
       });
     } else {
-      // Note modifiée : mettre à jour dans la liste
+      // Note modifiée : mettre à jour dans la liste SANS fermer l'éditeur
       console.log('[NotesPage] Note modifiée:', savedNote);
       setNotes((prevNotes: Note[]) => 
         prevNotes.map((n: Note) => (n.id === savedNote.id ? savedNote : n))
@@ -761,6 +767,19 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
       />
+
+      {/* Message d'aide pour les Archives */}
+      {showArchive && (
+        <div className="archive-info-banner">
+          <div className="archive-info-icon">💡</div>
+          <div className="archive-info-content">
+            <strong>Vue Archives</strong>
+            <p>
+              Notes créées par vous mais non assignées ou supprimées par vos contacts.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Barre d'actions pour sélection multiple */}
       {selectionMode && (

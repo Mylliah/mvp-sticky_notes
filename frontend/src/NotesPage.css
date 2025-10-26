@@ -358,6 +358,44 @@ body.dark-mode {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Message d'aide pour les Archives */
+.archive-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(103, 58, 183, 0.15) 0%, rgba(156, 39, 176, 0.15) 100%);
+  border-left: 4px solid #9c27b0;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.archive-info-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.archive-info-content {
+  flex: 1;
+}
+
+.archive-info-content strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.archive-info-content p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .empty-state {
   text-align: center;
   padding: 64px 24px;
@@ -376,6 +414,23 @@ body.dark-mode {
     margin-left: 0;
     margin-right: 0;
     padding: 16px;
+  }
+
+  .archive-info-banner {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .archive-info-icon {
+    font-size: 20px;
+  }
+
+  .archive-info-content strong {
+    font-size: 14px;
+  }
+
+  .archive-info-content p {
+    font-size: 13px;
   }
 
   .notes-header {

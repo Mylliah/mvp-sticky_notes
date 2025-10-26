@@ -24,6 +24,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDraftNotice, setShowDraftNotice] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   
   // Timer pour l'auto-sauvegarde
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -333,16 +334,32 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
 
     try {
       let savedNote: Note;
-      const isNew = !note;
       
       if (note) {
-        // Mode édition
+        // Mode édition : sauvegarder sans fermer
         savedNote = await noteService.updateNote(note.id, {
           content: content.trim(),
           important,
         });
+        
+        // Supprimer le brouillon car la note est sauvegardée
+        clearDraft();
+        console.log('[NoteEditor] ✅ Note mise à jour, brouillon supprimé');
+        
+        // Afficher la confirmation de sauvegarde
+        setShowSaveConfirmation(true);
+        setTimeout(() => setShowSaveConfirmation(false), 2000); // Masquer après 2 secondes
+        
+        // Notifier le parent pour mettre à jour la vignette
+        if (onNoteCreated) {
+          onNoteCreated(savedNote, false); // false = pas une nouvelle note
+        }
+        
+        // NE PAS réinitialiser le formulaire ni fermer l'éditeur
+        // La note reste ouverte avec le contenu mis à jour
+        
       } else {
-        // Mode création
+        // Mode création : créer et fermer
         savedNote = await noteService.createNote({
           content: content.trim(),
           important,
@@ -361,19 +378,17 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             // On ne bloque pas la création de la note même si l'assignation échoue
           }
         }
-      }
-      
-      // Réinitialiser le formulaire
-      setContent('');
-      setImportant(false);
-      
-      // Supprimer le brouillon sauvegardé car la note est maintenant enregistrée
-      clearDraft();
-      console.log('[NoteEditor] ✅ Note sauvegardée, brouillon supprimé');
-      
-      // Notifier le parent avec la note sauvegardée et si c'est une nouvelle
-      if (onNoteCreated) {
-        onNoteCreated(savedNote, isNew);
+        
+        // Pour une nouvelle note : réinitialiser et fermer
+        setContent('');
+        setImportant(false);
+        clearDraft();
+        console.log('[NoteEditor] ✅ Nouvelle note créée, brouillon supprimé');
+        
+        // Notifier le parent avec la note sauvegardée
+        if (onNoteCreated) {
+          onNoteCreated(savedNote, true); // true = nouvelle note
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde de la note');
@@ -456,6 +471,25 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}>
             💾 Brouillon restauré !
+          </div>
+        )}
+        
+        {/* Message de confirmation de sauvegarde */}
+        {showSaveConfirmation && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#4CAF50',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}>
+            ✅ Note sauvegardée !
           </div>
         )}
         
@@ -554,7 +588,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                 onChange={handleToggleCompleted}
                 disabled={isLoading}
               />
-              <span>✓ Marquer comme terminé</span>
+              <span>Marquer comme terminé ✓</span>
             </label>
           </div>
         )}

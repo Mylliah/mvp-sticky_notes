@@ -13,6 +13,7 @@ export interface ContactRelationship {
   email: string;
   nickname: string;
   is_self: boolean;
+  is_mutual?: boolean;
   contact_action: string | null;
   created_date: string | null;
 }

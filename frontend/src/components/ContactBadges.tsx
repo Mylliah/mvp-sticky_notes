@@ -154,7 +154,7 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactCli
 
         {/* Badges des contacts */}
         {contacts
-          .filter((contact) => !contact.is_self) // Exclure "Moi" qui est déjà affiché
+          .filter((contact) => !contact.is_self && contact.is_mutual) // Exclure "Moi" et afficher seulement les contacts mutuels
           .map((contact, index) => (
             <div
               key={contact.contact_user_id}
