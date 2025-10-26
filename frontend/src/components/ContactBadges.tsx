@@ -125,8 +125,16 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactCli
           </button>
         )}
       </div>
+      
+      {/* Message d'aide pour le drag & drop */}
+      {isOpen && (
+        <div className="drag-drop-hint">
+          💡 <span>Glissez vos notes sur un contact pour les assigner</span>
+        </div>
+      )}
+      
       <div className="contact-badges">
-        {/* Badge "Moi" */}
+        {/* Badge "Notes à moi-même" */}
         {currentUser && (
           <div
             className={`contact-badge me ${dragOverContactId === currentUser.id ? 'drag-over' : ''} ${selectedContactId === currentUser.id ? 'selected' : ''}`}
@@ -135,12 +143,12 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactCli
             onDrop={(e) => handleDrop(e, currentUser.id)}
             onClick={() => onContactClick && onContactClick(currentUser.id)}
             style={{ cursor: onContactClick ? 'pointer' : 'default' }}
-            title="Voir toutes mes notes"
+            title="Voir mes notes personnelles"
           >
             <div className="contact-avatar" style={{ background: '#f5576c' }}>
               {getInitials(currentUser.username)}
             </div>
-            <span className="contact-name">Moi</span>
+            <span className="contact-name">Notes à moi-même</span>
           </div>
         )}
 

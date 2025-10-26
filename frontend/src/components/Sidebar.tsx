@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={`sidebar-button all-notes-button ${activeView === 'all' ? 'active' : ''}`}
           onClick={onShowAllNotes}
         >
-          <span className="button-icon">📋</span>
+          <span className="button-icon">📄</span>
         </button>
 
         {/* Bouton Archive */}
@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={onShowArchive}
           title="Notes sans assignation"
         >
-          <span className="button-icon">📦</span>
+          <span className="button-icon">📁</span>
         </button>
       </div>
 

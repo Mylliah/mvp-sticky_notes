@@ -625,12 +625,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     }
     
     if (selectedContactId === null) {
-      return 'Mes Notes';
+      return 'Toutes mes notes';
     }
     
     // Si c'est l'utilisateur lui-même
     if (currentUser && selectedContactId === currentUser.id) {
-      return 'Mes Notes';
+      return 'Notes à moi-même';
     }
     
     // Chercher le contact dans la liste
@@ -639,7 +639,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       return `Notes avec ${contact.nickname}`;
     }
     
-    return 'Mes Notes';
+    return 'Toutes mes notes';
   };
 
   return (
@@ -660,7 +660,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         }}
         onShowProfile={() => setShowProfileModal(true)}
         onShowSettings={() => setShowSettingsModal(true)}
-        activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
+        activeView={showArchive ? 'archive' : (selectedContactId === null && activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
       <div className={`main-content ${contactsSidebarOpen ? 'contacts-open' : ''}`}>
