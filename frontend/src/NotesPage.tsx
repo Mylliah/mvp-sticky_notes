@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
@@ -33,6 +33,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [contactsRefreshTrigger, setContactsRefreshTrigger] = useState(0);
+  
+  // Pagination pour scroll infini
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
   
   // Filtres
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -76,8 +82,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Charger les notes
-  const loadNotes = async () => {
+  const loadNotes = async (page = 1, append = false) => {
     console.log('[NotesPage] Loading notes with filters:', { 
+      page,
+      append,
       activeFilter, 
       sortOrder, 
       searchQuery, 
@@ -85,7 +93,11 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       showArchive
     });
     
-    setLoading(true);
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
     
     try {
@@ -104,13 +116,17 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         const data = await response.json();
         console.log('[NotesPage] Orphan notes loaded:', data.count);
         setNotes(data.notes || []);
+        setHasMore(false); // Archive ne supporte pas la pagination pour l'instant
         setLoading(false);
+        setLoadingMore(false);
         return;
       }
       
       const params: any = {
         sort_by: 'created_date',
         sort_order: sortOrder,
+        page: page,
+        per_page: 20,
       };
 
       // Appliquer les filtres
@@ -136,9 +152,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       // On va filtrer côté client après avoir chargé les assignations
       
       const data = await noteService.getNotes(params);
-      console.log('[NotesPage] Notes loaded:', data.notes?.length || 0);
+      console.log('[NotesPage] Notes loaded:', data.notes?.length || 0, 'Total:', data.total);
       
       let notesToDisplay = data.notes || [];
+
+      // Vérifier s'il y a plus de notes à charger
+      const hasMoreNotes = data.notes && data.notes.length === 20;
+      setHasMore(hasMoreNotes);
 
       // Charger toutes les assignations pour les notes chargées
       if (notesToDisplay && notesToDisplay.length > 0) {
@@ -168,7 +188,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         }
       }
       
-      setNotes(notesToDisplay);
+      // Append ou remplacer les notes selon le mode
+      if (append && page > 1) {
+        setNotes(prevNotes => [...prevNotes, ...notesToDisplay]);
+      } else {
+        setNotes(notesToDisplay);
+      }
     } catch (err) {
       console.error('[NotesPage] Error loading notes:', err);
       
@@ -181,6 +206,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       setError(formatErrorMessage(errorResponse));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -247,9 +273,39 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Charger les notes au montage et quand les filtres changent
   useEffect(() => {
-    loadNotes();
+    // Reset pagination quand les filtres changent
+    setCurrentPage(1);
+    setHasMore(true);
+    loadNotes(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, sortOrder, searchQuery, selectedContactId, showArchive]);
+
+  // Intersection Observer pour le scroll infini
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMore && !loading && !loadingMore) {
+          console.log('[NotesPage] Loading more notes...');
+          const nextPage = currentPage + 1;
+          setCurrentPage(nextPage);
+          loadNotes(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, loading, loadingMore, currentPage]);
 
   // Calculer le nombre de notes non lues
   useEffect(() => {
@@ -749,26 +805,44 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         )}
 
         {!loading && notes.length > 0 && (
-          <div className="notes-grid">
-            {notes.map((note, index) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onEdit={handleEditNote}
-                onClick={handleEditNote}
-                onDelete={handleDeleteNote}
-                onDragStart={setDraggedNote}
-                onDragEnd={() => setDraggedNote(null)}
-                assignments={assignmentsMap.get(note.id) || []}
-                onAssign={handleNoteDrop}
-                contacts={contactsList}
-                isOrphan={(note as any).is_orphan || false}
-                selectionMode={selectionMode}
-                isSelected={selectedNotes.has(note.id)}
-                onToggleSelect={() => toggleNoteSelection(note.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="notes-grid">
+              {notes.map((note, index) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onEdit={handleEditNote}
+                  onClick={handleEditNote}
+                  onDelete={handleDeleteNote}
+                  onDragStart={setDraggedNote}
+                  onDragEnd={() => setDraggedNote(null)}
+                  assignments={assignmentsMap.get(note.id) || []}
+                  onAssign={handleNoteDrop}
+                  contacts={contactsList}
+                  isOrphan={(note as any).is_orphan || false}
+                  selectionMode={selectionMode}
+                  isSelected={selectedNotes.has(note.id)}
+                  onToggleSelect={() => toggleNoteSelection(note.id)}
+                />
+              ))}
+            </div>
+            
+            {/* Indicateur de chargement pour scroll infini */}
+            {loadingMore && (
+              <div className="loading-more">
+                <div className="notes-grid">
+                  {[1, 2, 3].map((i) => (
+                    <SkeletonCard key={`loading-${i}`} />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Observer target pour déclencher le chargement */}
+            {hasMore && !loadingMore && (
+              <div ref={observerTarget} className="scroll-observer" style={{ height: '20px' }} />
+            )}
+          </>
         )}
       </div>
 

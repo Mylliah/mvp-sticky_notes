@@ -63,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bouton Profil */}
         <button className="sidebar-button profile-button" title="Mon profil" onClick={onShowProfile}>
-          <span className="button-icon">M</span>
+          <span className="button-icon">👤</span>
         </button>
 
         {/* Bouton Paramètres */}
