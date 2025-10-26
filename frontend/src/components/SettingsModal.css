@@ -54,8 +54,9 @@
 
 .modal-header h2 {
   margin: 0;
-  color: var(--text-primary, #333);
+  color: #222 !important;
   font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .close-btn {
@@ -115,14 +116,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: var(--item-bg, #f9f9f9);
+  background: var(--item-bg, #d4d4d4);
   border-radius: 8px;
   margin-bottom: 1rem;
   transition: all 0.2s ease;
+  border: 1px solid #b8b8b8;
 }
 
 .setting-item:hover {
-  background: var(--item-hover-bg, #f0f0f0);
+  background: var(--item-hover-bg, #c0c0c0);
 }
 
 .setting-item:last-child {
@@ -143,7 +145,7 @@
 
 .setting-info p {
   margin: 0;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary, #444);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -221,10 +223,10 @@
 
 /* About Section */
 .about-section {
-  background: var(--about-bg, #f9f9f9);
+  background: var(--about-bg, #d4d4d4);
   padding: 1.5rem;
   border-radius: 8px;
-  border: none;
+  border: 1px solid #b8b8b8;
 }
 
 .about-info {

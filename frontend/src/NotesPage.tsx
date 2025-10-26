@@ -169,14 +169,26 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           const currentUserId = authService.getCurrentUser()?.id;
           
           notesToDisplay = notesToDisplay.filter((note: Note) => {
-            // Vérifier si la note est créée par le contact
+            const noteAssignments = loadedAssignmentsMap.get(note.id) || [];
+            
+            // Si on filtre par "Notes à moi-même" (selectedContactId === currentUserId)
+            if (selectedContactId === currentUserId) {
+              // Afficher uniquement les notes que JE me suis assignées À MOI-MÊME
+              // = créées par moi ET assignées à moi
+              return note.creator_id === currentUserId && 
+                     noteAssignments.some(
+                       (assignment: Assignment) => assignment.user_id === currentUserId
+                     );
+            }
+            
+            // Pour les autres contacts : afficher les notes partagées avec ce contact
+            // 1. Notes créées par le contact
             if (note.creator_id === selectedContactId) {
               return true;
             }
             
-            // Vérifier si la note est créée par moi et assignée au contact
+            // 2. Notes créées par moi et assignées au contact
             if (note.creator_id === currentUserId) {
-              const noteAssignments = loadedAssignmentsMap.get(note.id) || [];
               return noteAssignments.some(
                 (assignment: Assignment) => assignment.user_id === selectedContactId
               );
@@ -865,6 +877,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           note={selectedNote}
           onNoteCreated={handleNoteCreated}
           onNoteDeleted={handleNoteDeleted}
+          autoAssignContactId={selectedContactId}
           onClose={() => {
             setShowEditor(false);
             // Si on a édité une note existante, rafraîchir seulement ses assignations

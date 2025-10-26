@@ -15,9 +15,10 @@ interface NoteEditorProps {
   onNoteCreated?: (note: Note, isNew: boolean) => void; // Passer la note et indiquer si nouvelle
   onNoteDeleted?: () => void;
   onClose?: () => void;
+  autoAssignContactId?: number | null; // ID du contact à assigner automatiquement
 }
 
-export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose }: NoteEditorProps) {
+export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose, autoAssignContactId }: NoteEditorProps) {
   const [content, setContent] = useState('');
   const [important, setImportant] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -346,6 +347,20 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
           content: content.trim(),
           important,
         });
+        
+        // Si on crée depuis la vue d'un contact, assigner automatiquement
+        if (autoAssignContactId !== null && autoAssignContactId !== undefined) {
+          try {
+            await assignmentService.createAssignment({
+              note_id: savedNote.id,
+              user_id: autoAssignContactId
+            });
+            console.log('[NoteEditor] Note automatiquement assignée au contact', autoAssignContactId);
+          } catch (assignErr) {
+            console.error('[NoteEditor] Erreur lors de l\'auto-assignation:', assignErr);
+            // On ne bloque pas la création de la note même si l'assignation échoue
+          }
+        }
       }
       
       // Réinitialiser le formulaire
