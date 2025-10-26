@@ -23,6 +23,8 @@
 /* Dark mode pour les cartes */
 body.dark-mode .note-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background-color: #2a2a2a;
+  color: #d0d0d0; /* Texte gris clair pour meilleure lisibilité */
 }
 
 /* Animation d'apparition des notes */
@@ -162,6 +164,11 @@ body.dark-mode .note-card {
   -webkit-box-orient: vertical;
   margin-left: 32px; /* Aligné avec le texte "de créateur" et "à user" */
   padding-right: 32px; /* Équilibrer l'espace à droite */
+}
+
+/* Dark mode pour le corps de note */
+body.dark-mode .note-body {
+  color: #d0d0d0; /* Texte gris clair */
 }
 
 /* Bouton d'édition - en bas à droite, visible uniquement au survol */
@@ -367,6 +374,12 @@ body.dark-mode .note-card {
   box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4); /* Ombre orangée */
   background-color: #fff3e0; /* Fond légèrement orangé */
   animation: pulse-orphan 2s ease-in-out infinite;
+}
+
+body.dark-mode .note-card.orphan {
+  background-color: #3d2f1f; /* Fond orangé foncé pour le mode nuit */
+  border-color: #ff9800;
+  color: #d0d0d0;
 }
 
 @keyframes pulse-orphan {

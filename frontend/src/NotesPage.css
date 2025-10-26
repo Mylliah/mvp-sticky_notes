@@ -224,10 +224,19 @@ body.dark-mode {
   gap: 16px;
 }
 
+body.dark-mode .selection-toolbar {
+  background-color: rgba(30, 30, 30, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
 .selection-info {
   font-weight: 600;
   color: #333;
   font-size: 14px;
+}
+
+body.dark-mode .selection-info {
+  color: #d0d0d0;
 }
 
 .selection-actions {
@@ -250,10 +259,21 @@ body.dark-mode {
   white-space: nowrap;
 }
 
+body.dark-mode .selection-action-btn {
+  background-color: #2a2a2a;
+  color: #d0d0d0;
+  border-color: #444;
+}
+
 .selection-action-btn:hover:not(:disabled) {
   background-color: #e0e0e0;
   border-color: #bbb;
   transform: translateY(-1px);
+}
+
+body.dark-mode .selection-action-btn:hover:not(:disabled) {
+  background-color: #333;
+  border-color: #555;
 }
 
 .selection-action-btn:disabled {
@@ -370,6 +390,11 @@ body.dark-mode {
   margin-bottom: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .archive-info-banner {
+  background: linear-gradient(135deg, rgba(103, 58, 183, 0.25) 0%, rgba(156, 39, 176, 0.25) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .archive-info-icon {
