@@ -254,6 +254,25 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     }
   };
 
+  // Recharger uniquement les assignations d'une note spécifique (optimisation pour drag & drop)
+  const reloadNoteAssignments = async (noteId: number) => {
+    try {
+      console.log('[NotesPage] Reloading assignments for note', noteId);
+      const assignments = await assignmentService.getAssignments({ note_id: noteId });
+      
+      // Mettre à jour uniquement cette note dans la map
+      setAssignmentsMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(noteId, assignments);
+        return newMap;
+      });
+      
+      console.log('[NotesPage] Assignments reloaded for note', noteId, ':', assignments.length, 'assignments');
+    } catch (err) {
+      console.error(`[NotesPage] Error reloading assignments for note ${noteId}:`, err);
+    }
+  };
+
   // Charger les contacts au montage pour créer une map des noms
   useEffect(() => {
     const loadContacts = async () => {
@@ -491,7 +510,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                   type: 'info',
                   duration: 3000,
                 });
-                loadNotes();
+                // Recharger uniquement les assignations de cette note
+                await reloadNoteAssignments(noteId);
               } catch (err) {
                 const errorResponse = getErrorMessage(err);
                 addToast({
@@ -505,8 +525,14 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         ],
       });
 
-      // Recharger les notes pour mettre à jour l'affichage
-      loadNotes();
+      // Recharger uniquement les assignations de cette note au lieu de tout recharger
+      // SAUF si on est dans la vue Archive : dans ce cas on recharge tout car la note
+      // ne sera plus orpheline et doit disparaître de la liste
+      if (showArchive) {
+        loadNotes();
+      } else {
+        await reloadNoteAssignments(noteId);
+      }
     } catch (err) {
       console.error('[NotesPage] Error assigning note:', err);
       const errorResponse = getErrorMessage(err);
@@ -659,6 +685,14 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       {/* Sidebar gauche */}
       <Sidebar 
         onNewNote={() => {
+          // Si on est sur un filtre actif (important, en_cours, done, received, sent) OU dans les archives
+          // -> Revenir à "Toutes mes notes" avant de créer une note
+          // MAIS on garde le filtrage par contact (selectedContactId)
+          if (showArchive || (activeFilter !== 'all' && !selectedContactId)) {
+            setShowArchive(false);
+            setActiveFilter('all');
+            setSearchQuery('');
+          }
           setSelectedNote(null);
           setShowEditor(true);
         }}

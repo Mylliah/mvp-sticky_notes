@@ -374,8 +374,12 @@ def get_orphan_notes():
     """
     current_user_id = int(get_jwt_identity())
     
-    # Récupérer toutes les notes créées par l'utilisateur
-    my_notes = Note.query.filter_by(creator_id=current_user_id).all()
+    # Récupérer toutes les notes créées par l'utilisateur (NON supprimées)
+    my_notes = Note.query.filter_by(
+        creator_id=current_user_id
+    ).filter(
+        Note.delete_date.is_(None)  # Exclure les notes déjà supprimées
+    ).all()
     
     orphan_notes = []
     for note in my_notes:

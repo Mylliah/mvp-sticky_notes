@@ -222,15 +222,17 @@ body.dark-mode .note-card {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
   font-weight: bold;
-  box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+  letter-spacing: 0.5px;
+  box-shadow: 0 3px 8px rgba(118, 75, 162, 0.5);
   animation: fadeInPulse 0.5s ease-in-out, gentlePulse 2s ease-in-out infinite 0.5s;
   z-index: 10;
+  text-transform: uppercase;
 }
 
 @keyframes fadeInPulse {
@@ -367,4 +369,23 @@ body.dark-mode .note-card {
 .note-card.orphan:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(255, 152, 0, 0.5);
+}
+
+/* Note auto-assignée uniquement (créée par moi ET assignée QU'À moi) */
+.note-card.self-only {
+  background-color: #e1f5fe; /* Fond bleu clair */
+  border-left: 4px solid #0288d1; /* Bordure bleue à gauche */
+}
+
+body.dark-mode .note-card.self-only {
+  background-color: #1a3a4a; /* Bleu foncé en mode sombre */
+  border-left: 4px solid #4fc3f7; /* Bordure bleu clair en mode sombre */
+}
+
+.note-card.self-only:hover {
+  background-color: #b3e5fc; /* Bleu plus prononcé au hover */
+}
+
+body.dark-mode .note-card.self-only:hover {
+  background-color: #254a5e; /* Bleu foncé plus clair au hover */
 }

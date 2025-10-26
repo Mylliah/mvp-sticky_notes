@@ -218,9 +218,21 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     }
   };
 
+  // Vérifier si la note est auto-assignée uniquement (créée par moi ET assignée QU'À moi)
+  const isSelfOnlyNote = () => {
+    if (!currentUser || !isMyNote) return false;
+    
+    // Si pas d'assignations du tout, ce n'est pas une note "self-only"
+    if (!assignments || assignments.length === 0) return false;
+    
+    // Vérifier si toutes les assignations sont pour moi uniquement
+    const allAssignmentsAreToMe = assignments.every(a => a.user_id === currentUser.id);
+    return allAssignmentsAreToMe && assignments.length === 1;
+  };
+
   return (
     <div 
-      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''} ${isOrphan ? 'orphan' : ''} ${selectionMode ? 'selection-mode' : ''} ${isSelected ? 'selected' : ''}`}
+      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''} ${isOrphan ? 'orphan' : ''} ${selectionMode ? 'selection-mode' : ''} ${isSelected ? 'selected' : ''} ${isSelfOnlyNote() ? 'self-only' : ''}`}
       draggable={!selectionMode}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -308,8 +320,8 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
 
       {/* Badge "Nouveau" si note récemment reçue et non lue - en haut à droite */}
       {isNew && (
-        <div className="new-badge" title="Reçu récemment">
-          🆕
+        <div className="new-badge" title="Nouvelle note non lue">
+          NOUVEAU
         </div>
       )}
 
