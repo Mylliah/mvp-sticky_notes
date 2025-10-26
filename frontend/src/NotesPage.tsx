@@ -5,6 +5,7 @@ import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
 import ContactsManager from './components/ContactsManager';
 import Sidebar from './components/Sidebar';
+import SkeletonCard from './components/SkeletonCard';
 import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
 import { Assignment } from './types/assignment.types';
@@ -13,6 +14,7 @@ import { authService } from './services/auth.service';
 import { assignmentService } from './services/assignment.service';
 import { contactService } from './services/contact.service';
 import { handleAuthError } from './utils/auth-redirect';
+import { getErrorMessage, formatErrorMessage } from './utils/error-handler';
 import './NotesPage.css';
 
 interface NotesPageProps {
@@ -41,6 +43,15 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<number>>(new Set());
 
+  // Dark mode
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Sidebar contacts rétractable
+  const [contactsSidebarOpen, setContactsSidebarOpen] = useState(true);
+
   // Drag & Drop
   const [draggedNote, setDraggedNote] = useState<Note | null>(null);
 
@@ -56,6 +67,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Map des assignations par note_id pour accès rapide
   const [assignmentsMap, setAssignmentsMap] = useState<Map<number, Assignment[]>>(new Map());
+
+  // Compteur de notes non lues
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Charger les notes
   const loadNotes = async () => {
@@ -159,8 +173,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         return; // Redirection en cours
       }
       
-      const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
-      setError(errorMessage);
+      const errorResponse = getErrorMessage(err);
+      setError(formatErrorMessage(errorResponse));
     } finally {
       setLoading(false);
     }
@@ -232,6 +246,34 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     loadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, sortOrder, searchQuery, selectedContactId, showArchive]);
+
+  // Calculer le nombre de notes non lues
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return;
+    
+    let count = 0;
+    assignmentsMap.forEach((assignments: Assignment[]) => {
+      const myAssignment = assignments.find((a: Assignment) => 
+        Number(a.user_id) === Number(user.id)
+      );
+      if (myAssignment && !myAssignment.is_read) {
+        count++;
+      }
+    });
+    
+    setUnreadCount(count);
+  }, [assignmentsMap]);
+
+  // Sauvegarder la préférence dark mode et appliquer la classe
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
 
   const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
     setShowEditor(false);
@@ -310,7 +352,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         await assignmentService.deleteAssignment(myAssignment.id);
         loadNotes();
       } catch (err) {
-        alert('Erreur lors de la suppression de l\'assignation');
+        const errorResponse = getErrorMessage(err);
+        addToast({
+          message: formatErrorMessage(errorResponse),
+          type: 'error',
+          duration: 5000,
+        });
       }
     } else if (isCreator) {
       // Si le créateur n'a pas d'assignation (rare), on peut supprimer la note complètement
@@ -322,7 +369,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         await noteService.deleteNote(noteId);
         loadNotes();
       } catch (err) {
-        alert('Erreur lors de la suppression');
+        const errorResponse = getErrorMessage(err);
+        addToast({
+          message: formatErrorMessage(errorResponse),
+          type: 'error',
+          duration: 5000,
+        });
       }
     }
   };
@@ -369,8 +421,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 });
                 loadNotes();
               } catch (err) {
+                const errorResponse = getErrorMessage(err);
                 addToast({
-                  message: 'Erreur lors de l\'annulation',
+                  message: formatErrorMessage(errorResponse),
                   type: 'error',
                   duration: 3000,
                 });
@@ -384,8 +437,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       loadNotes();
     } catch (err) {
       console.error('[NotesPage] Error assigning note:', err);
+      const errorResponse = getErrorMessage(err);
       addToast({
-        message: err instanceof Error ? err.message : 'Erreur lors de l\'assignation',
+        message: formatErrorMessage(errorResponse),
         type: 'error',
         duration: 5000,
       });
@@ -468,8 +522,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       loadNotes();
     } catch (err) {
       console.error('Error batch assigning:', err);
+      const errorResponse = getErrorMessage(err);
       addToast({
-        message: 'Erreur lors de l\'assignation groupée',
+        message: formatErrorMessage(errorResponse),
         type: 'error',
         duration: 5000,
       });
@@ -500,8 +555,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       loadNotes();
     } catch (err) {
       console.error('Error batch deleting:', err);
+      const errorResponse = getErrorMessage(err);
       addToast({
-        message: 'Erreur lors de la suppression groupée',
+        message: formatErrorMessage(errorResponse),
         type: 'error',
         duration: 5000,
       });
@@ -554,10 +610,31 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       <div className="main-content">
         <header className="notes-header">
           <div className="header-left">
-            <h1>{getPageTitle()}</h1>
+            <div className="title-with-badge">
+              <h1>{getPageTitle()}</h1>
+              {unreadCount > 0 && (
+                <span className="unread-badge" title={`${unreadCount} note(s) non lue(s)`}>
+                  {unreadCount}
+                </span>
+              )}
+            </div>
             {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
           </div>
           <div className="header-right">
+            <button 
+              className={`dark-mode-btn ${darkMode ? 'active' : ''}`}
+              onClick={() => setDarkMode(!darkMode)}
+              title={darkMode ? "Mode clair" : "Mode sombre"}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <button 
+              className={`contacts-toggle-btn ${contactsSidebarOpen ? 'active' : ''}`}
+              onClick={() => setContactsSidebarOpen(!contactsSidebarOpen)}
+              title={contactsSidebarOpen ? "Masquer contacts" : "Afficher contacts"}
+            >
+              {contactsSidebarOpen ? '👥 →' : '← 👥'}
+            </button>
             <button 
               className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
               onClick={toggleSelectionMode}
@@ -649,7 +726,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
       {/* Zone de contenu */}
       <div className="notes-content">
-        {loading && <div className="loading">Chargement...</div>}
+        {loading && (
+          <div className="notes-grid">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        )}
         
         {error && (
           <div className="error-banner">
@@ -693,6 +776,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         refreshTrigger={contactsRefreshTrigger}
         onContactClick={handleContactClick}
         selectedContactId={selectedContactId}
+        isOpen={contactsSidebarOpen}
+        onToggle={() => setContactsSidebarOpen(!contactsSidebarOpen)}
       />
 
       {/* Toast Container */}

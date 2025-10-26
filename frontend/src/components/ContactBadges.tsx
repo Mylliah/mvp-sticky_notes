@@ -10,9 +10,11 @@ interface ContactBadgesProps {
   refreshTrigger?: number; // Incrémenter ce nombre force un rechargement
   onContactClick?: (contactId: number) => void; // Nouveau callback pour filtrer par contact
   selectedContactId?: number | null; // ID du contact sélectionné pour l'effet visuel
+  isOpen?: boolean; // État ouvert/fermé de la sidebar
+  onToggle?: () => void; // Callback pour toggle
 }
 
-export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactClick, selectedContactId }: ContactBadgesProps) {
+export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactClick, selectedContactId, isOpen = true, onToggle }: ContactBadgesProps) {
   const [contacts, setContacts] = useState<ContactRelationship[]>([]);
   const [currentUser, setCurrentUser] = useState<{ id: number; username: string } | null>(null);
   const [dragOverContactId, setDragOverContactId] = useState<number | null>(null);
@@ -114,9 +116,14 @@ export default function ContactBadges({ onDrop, refreshTrigger = 0, onContactCli
   }
 
   return (
-    <div className="contact-badges-container">
+    <div className={`contact-badges-container ${isOpen ? 'open' : 'closed'}`}>
       <div className="contact-badges-header">
         <h3>👥 Contacts</h3>
+        {onToggle && (
+          <button className="toggle-btn" onClick={onToggle} title={isOpen ? "Réduire" : "Afficher"}>
+            {isOpen ? '→' : '←'}
+          </button>
+        )}
       </div>
       <div className="contact-badges">
         {/* Badge "Moi" */}

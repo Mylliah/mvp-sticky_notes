@@ -10,6 +10,15 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.contact-badges-container.closed {
+  transform: translateX(100%);
+}
+
+.contact-badges-container.open {
+  transform: translateX(0);
 }
 
 .contact-badges-header {
@@ -17,6 +26,29 @@
   border-bottom: 1px solid #e0e0e0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.contact-badges-header .toggle-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.contact-badges-header .toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .contact-badges-header h3 {
