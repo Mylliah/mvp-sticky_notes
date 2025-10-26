@@ -154,7 +154,8 @@ class TestAuthRoutes:
             assert response.status_code == 200
             data = response.get_json()
             assert 'access_token' in data
-            assert data['username'] == 'loginuser'
+            assert 'user' in data
+            assert data['user']['username'] == 'loginuser'
             assert len(data['access_token']) > 0
 
     @pytest.mark.integration
@@ -282,4 +283,4 @@ class TestAuthRoutes:
             
             assert login_response.status_code == 200
             assert 'access_token' in login_response.get_json()
-            assert login_response.get_json()['username'] == 'workflowuser'
+            assert login_response.get_json()['user']['username'] == 'workflowuser'

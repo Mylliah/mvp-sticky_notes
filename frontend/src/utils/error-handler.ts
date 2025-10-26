@@ -9,7 +9,69 @@ export interface ErrorResponse {
 }
 
 export function getErrorMessage(error: any): ErrorResponse {
-  // Erreur réseau (pas de réponse du serveur)
+  // Si c'est une Error JavaScript simple (lancée par nos services)
+  if (error instanceof Error && !(error as any).response) {
+    const message = error.message;
+    
+    // Messages spécifiques du backend
+    if (message.includes('Assignment already exists')) {
+      return {
+        message: 'Cette note est déjà assignée à ce contact.',
+        action: 'Choisissez un autre contact ou modifiez l\'assignation existante.',
+        canRetry: false
+      };
+    }
+    
+    if (message.includes('User is not in your contacts')) {
+      return {
+        message: 'Cet utilisateur n\'est pas dans vos contacts.',
+        action: 'Ajoutez-le d\'abord à vos contacts avant d\'assigner une note.',
+        canRetry: false
+      };
+    }
+    
+    if (message.includes('contact has not added you back')) {
+      return {
+        message: 'Ce contact ne vous a pas encore ajouté.',
+        action: 'Attendez que le contact accepte votre demande.',
+        canRetry: false
+      };
+    }
+    
+    if (message.includes('Only the creator can assign')) {
+      return {
+        message: 'Seul le créateur de la note peut l\'assigner.',
+        action: 'Vous ne pouvez pas assigner cette note.',
+        canRetry: false
+      };
+    }
+    
+    if (message.includes('Note not found')) {
+      return {
+        message: 'Cette note n\'existe pas ou a été supprimée.',
+        action: 'Actualisez la page pour voir les dernières données.',
+        canRetry: false
+      };
+    }
+    
+    // Erreur réseau (fetch failed)
+    if (message.includes('Failed to fetch') || message.includes('Network')) {
+      return {
+        message: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
+        action: 'Veuillez réessayer dans quelques instants.',
+        canRetry: true
+      };
+    }
+    
+    // Autres erreurs
+    return {
+      message: message,
+      action: 'Si le problème persiste, contactez le support.',
+      canRetry: false
+    };
+  }
+
+  // Erreur réseau (pas de réponse du serveur) - ancien format
   if (!error.response) {
     return {
       message: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',

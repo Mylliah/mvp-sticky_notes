@@ -1,7 +1,7 @@
 /* Variables CSS pour le thème */
 :root {
-  --bg-gradient-start: #667eea;
-  --bg-gradient-end: #764ba2;
+  --bg-gradient-start: #b8a4f3;
+  --bg-gradient-end: #c4b5fd;
   --text-primary: white;
   --text-secondary: rgba(255, 255, 255, 0.9);
   --card-bg: #fffacd;

@@ -268,13 +268,41 @@ class TestAssignmentsIsolation:
         db.session.add(assignment)
         db.session.commit()
         
-        # Bob (destinataire) essaie de supprimer
+        # Bob (destinataire) peut supprimer son propre assignment
         token_bob = create_access_token(identity=str(user2.id))
         response = client.delete(f'/v1/assignments/{assignment.id}',
                                 headers={"Authorization": f"Bearer {token_bob}"})
         
-        assert response.status_code == 403
-        assert b"Only the creator" in response.data
+        # Le destinataire peut supprimer l'assignation (comportement correct)
+        assert response.status_code == 200
+
+    @pytest.mark.integration
+    def test_third_party_cannot_delete_assignment(self, client, app):
+        """Un tiers (ni créateur ni destinataire) ne peut pas supprimer une assignation."""
+        with app.app_context():
+            from flask_jwt_extended import create_access_token
+            
+            user1 = User(username='alice', email='alice@test.com', password_hash='hash')
+            user2 = User(username='bob', email='bob@test.com', password_hash='hash')
+            user3 = User(username='charlie', email='charlie@test.com', password_hash='hash')
+            db.session.add_all([user1, user2, user3])
+            db.session.commit()
+            
+            note = Note(content="Note d'Alice pour Bob", creator_id=user1.id)
+            db.session.add(note)
+            db.session.commit()
+            
+            assignment = Assignment(note_id=note.id, user_id=user2.id)
+            db.session.add(assignment)
+            db.session.commit()
+            
+            # Charlie (ni créateur ni destinataire) essaie de supprimer
+            token_charlie = create_access_token(identity=str(user3.id))
+            response = client.delete(f'/v1/assignments/{assignment.id}',
+                                    headers={"Authorization": f"Bearer {token_charlie}"})
+            
+            assert response.status_code == 403
+            assert b"Only the creator or the recipient" in response.data
 
 
 # NOTE: Tests d'isolation pour Action Logs supprimés.
