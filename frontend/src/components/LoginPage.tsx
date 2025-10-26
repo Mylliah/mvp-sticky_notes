@@ -94,9 +94,13 @@ export default function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginP
           </form>
 
           <div className="login-help">
-            <p>💡 Compte de test :</p>
-            <p><strong>Email:</strong> alice@test.com</p>
-            <p><strong>Mot de passe:</strong> password123</p>
+            <p>💡 Comptes de test :</p>
+            <p><strong>Email:</strong> testuser1@test.com</p>
+            <p><strong>Mot de passe:</strong> SecurePass123!</p>
+            <p><strong>Email:</strong> saido@test.com</p>
+            <p><strong>Mot de passe:</strong> azeqsdwxc</p>
+            <p><strong>Email:</strong> MaoMao</p>
+            <p><strong>Mot de passe:</strong> azeqsdwxc</p>
           </div>
 
           {onSwitchToRegister && (
