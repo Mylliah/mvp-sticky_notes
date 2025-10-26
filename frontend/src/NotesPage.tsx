@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
@@ -686,6 +686,36 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     return 'Toutes mes notes';
   };
 
+  // Trier les notes pour mettre les non lues en premier
+  const sortedNotes = useMemo(() => {
+    const currentUserId = authService.getCurrentUser()?.id;
+    if (!currentUserId) return notes;
+
+    return [...notes].sort((a, b) => {
+      // Récupérer les assignations de chaque note
+      const assignmentsA = assignmentsMap.get(a.id) || [];
+      const assignmentsB = assignmentsMap.get(b.id) || [];
+      
+      // Trouver l'assignation de l'utilisateur actuel
+      const myAssignmentA = assignmentsA.find((assignment: Assignment) => 
+        Number(assignment.user_id) === Number(currentUserId)
+      );
+      const myAssignmentB = assignmentsB.find((assignment: Assignment) => 
+        Number(assignment.user_id) === Number(currentUserId)
+      );
+      
+      // Déterminer si la note est lue ou non
+      const isReadA = myAssignmentA?.is_read ?? true; // Si pas d'assignation, considérer comme lu
+      const isReadB = myAssignmentB?.is_read ?? true;
+      
+      // Les notes non lues (is_read = false) doivent apparaître en premier
+      if (isReadA === isReadB) {
+        return 0; // Garder l'ordre actuel (par date du backend)
+      }
+      return isReadA ? 1 : -1; // false (non lu) avant true (lu)
+    });
+  }, [notes, assignmentsMap]);
+
   return (
     <div className="notes-page">
       {/* Sidebar gauche */}
@@ -872,7 +902,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         {!loading && notes.length > 0 && (
           <>
             <div className="notes-grid">
-              {notes.map((note, index) => (
+              {sortedNotes.map((note, index) => (
                 <NoteCard
                   key={note.id}
                   note={note}
