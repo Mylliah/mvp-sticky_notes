@@ -5,6 +5,7 @@ import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
 import ContactsManager from './components/ContactsManager';
 import Sidebar from './components/Sidebar';
+import SkeletonCard from './components/SkeletonCard';
 import ToastContainer, { useToast } from './components/ToastContainer';
 import { Note } from './types/note.types';
 import { Assignment } from './types/assignment.types';
@@ -13,6 +14,7 @@ import { authService } from './services/auth.service';
 import { assignmentService } from './services/assignment.service';
 import { contactService } from './services/contact.service';
 import { handleAuthError } from './utils/auth-redirect';
+import { getErrorMessage, formatErrorMessage } from './utils/error-handler';
 import './NotesPage.css';
 
 interface NotesPageProps {
@@ -32,9 +34,23 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showArchive, setShowArchive] = useState(false); // Vue Archive
   
   // Filtre par contact
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+
+  // Mode sélection multiple
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<Set<number>>(new Set());
+
+  // Dark mode
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Sidebar contacts rétractable
+  const [contactsSidebarOpen, setContactsSidebarOpen] = useState(true);
 
   // Drag & Drop
   const [draggedNote, setDraggedNote] = useState<Note | null>(null);
@@ -52,19 +68,42 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   // Map des assignations par note_id pour accès rapide
   const [assignmentsMap, setAssignmentsMap] = useState<Map<number, Assignment[]>>(new Map());
 
+  // Compteur de notes non lues
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Charger les notes
   const loadNotes = async () => {
     console.log('[NotesPage] Loading notes with filters:', { 
       activeFilter, 
       sortOrder, 
       searchQuery, 
-      selectedContactId 
+      selectedContactId,
+      showArchive
     });
     
     setLoading(true);
     setError(null);
     
     try {
+      // Si on est en vue Archive, appeler la route spécifique
+      if (showArchive) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/v1/notes/orphans`, {
+          headers: {
+            'Authorization': `Bearer ${authService.getToken()}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to load orphan notes');
+        }
+        
+        const data = await response.json();
+        console.log('[NotesPage] Orphan notes loaded:', data.count);
+        setNotes(data.notes || []);
+        setLoading(false);
+        return;
+      }
+      
       const params: any = {
         sort_by: 'created_date',
         sort_order: sortOrder,
@@ -134,8 +173,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         return; // Redirection en cours
       }
       
-      const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
-      setError(errorMessage);
+      const errorResponse = getErrorMessage(err);
+      setError(formatErrorMessage(errorResponse));
     } finally {
       setLoading(false);
     }
@@ -206,7 +245,35 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   useEffect(() => {
     loadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, sortOrder, searchQuery, selectedContactId]);
+  }, [activeFilter, sortOrder, searchQuery, selectedContactId, showArchive]);
+
+  // Calculer le nombre de notes non lues
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return;
+    
+    let count = 0;
+    assignmentsMap.forEach((assignments: Assignment[]) => {
+      const myAssignment = assignments.find((a: Assignment) => 
+        Number(a.user_id) === Number(user.id)
+      );
+      if (myAssignment && !myAssignment.is_read) {
+        count++;
+      }
+    });
+    
+    setUnreadCount(count);
+  }, [assignmentsMap]);
+
+  // Sauvegarder la préférence dark mode et appliquer la classe
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
 
   const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
     setShowEditor(false);
@@ -263,12 +330,51 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   };
 
   const handleDeleteNote = async (noteId: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+    const currentUserId = authService.getCurrentUser()?.id;
+    if (!currentUserId) return;
+    
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    const isCreator = note.creator_id === currentUserId;
+    const assignments = assignmentsMap.get(noteId) || [];
+    const myAssignment = assignments.find(a => a.user_id === currentUserId);
+    
+    // Si l'utilisateur a une assignation, on la supprime (créateur ou destinataire)
+    if (myAssignment) {
+      const message = isCreator
+        ? 'Êtes-vous sûr de vouloir retirer cette note de votre liste ? Elle restera visible pour les destinataires.'
+        : 'Êtes-vous sûr de vouloir retirer cette note de votre liste ?';
+      
+      if (!window.confirm(message)) return;
+      
+      try {
+        await assignmentService.deleteAssignment(myAssignment.id);
+        loadNotes();
+      } catch (err) {
+        const errorResponse = getErrorMessage(err);
+        addToast({
+          message: formatErrorMessage(errorResponse),
+          type: 'error',
+          duration: 5000,
+        });
+      }
+    } else if (isCreator) {
+      // Si le créateur n'a pas d'assignation (rare), on peut supprimer la note complètement
+      if (!window.confirm('Êtes-vous sûr de vouloir supprimer définitivement cette note ? Elle sera supprimée pour tous les destinataires.')) {
+        return;
+      }
+      
       try {
         await noteService.deleteNote(noteId);
         loadNotes();
       } catch (err) {
-        alert('Erreur lors de la suppression');
+        const errorResponse = getErrorMessage(err);
+        addToast({
+          message: formatErrorMessage(errorResponse),
+          type: 'error',
+          duration: 5000,
+        });
       }
     }
   };
@@ -315,8 +421,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 });
                 loadNotes();
               } catch (err) {
+                const errorResponse = getErrorMessage(err);
                 addToast({
-                  message: 'Erreur lors de l\'annulation',
+                  message: formatErrorMessage(errorResponse),
                   type: 'error',
                   duration: 3000,
                 });
@@ -330,8 +437,9 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       loadNotes();
     } catch (err) {
       console.error('[NotesPage] Error assigning note:', err);
+      const errorResponse = getErrorMessage(err);
       addToast({
-        message: err instanceof Error ? err.message : 'Erreur lors de l\'assignation',
+        message: formatErrorMessage(errorResponse),
         type: 'error',
         duration: 5000,
       });
@@ -344,6 +452,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     setActiveFilter('all');
     setSearchQuery('');
     setSelectedContactId(null);
+    setShowArchive(false);
+  };
+
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
+    setShowArchive(false); // Réinitialiser l'archive quand on change de filtre
   };
 
   const handleContactClick = (contactId: number) => {
@@ -359,8 +473,103 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     });
   };
 
+  // === SÉLECTION MULTIPLE ===
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedNotes(new Set()); // Clear sélection quand on change de mode
+  };
+
+  const toggleNoteSelection = (noteId: number) => {
+    const newSelection = new Set(selectedNotes);
+    if (newSelection.has(noteId)) {
+      newSelection.delete(noteId);
+    } else {
+      newSelection.add(noteId);
+    }
+    setSelectedNotes(newSelection);
+  };
+
+  const selectAllNotes = () => {
+    const allNoteIds = new Set(notes.map(note => note.id));
+    setSelectedNotes(allNoteIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedNotes(new Set());
+  };
+
+  const handleBatchAssign = async (contactId: number) => {
+    if (selectedNotes.size === 0) return;
+
+    try {
+      // Assigner toutes les notes sélectionnées
+      const noteIds = Array.from(selectedNotes) as number[];
+      const promises = noteIds.map(noteId =>
+        assignmentService.createAssignment({ note_id: noteId, user_id: contactId })
+      );
+      
+      await Promise.all(promises);
+      
+      addToast({
+        message: `${selectedNotes.size} note(s) assignée(s) avec succès`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      // Clear sélection et recharger
+      clearSelection();
+      setSelectionMode(false);
+      loadNotes();
+    } catch (err) {
+      console.error('Error batch assigning:', err);
+      const errorResponse = getErrorMessage(err);
+      addToast({
+        message: formatErrorMessage(errorResponse),
+        type: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedNotes.size === 0) return;
+    
+    if (!window.confirm(`Supprimer ${selectedNotes.size} note(s) ?`)) return;
+
+    try {
+      const noteIds = Array.from(selectedNotes) as number[];
+      const promises = noteIds.map(noteId =>
+        noteService.deleteNote(noteId)
+      );
+      
+      await Promise.all(promises);
+      
+      addToast({
+        message: `${selectedNotes.size} note(s) supprimée(s)`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      clearSelection();
+      setSelectionMode(false);
+      loadNotes();
+    } catch (err) {
+      console.error('Error batch deleting:', err);
+      const errorResponse = getErrorMessage(err);
+      addToast({
+        message: formatErrorMessage(errorResponse),
+        type: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
   // Obtenir le titre de la page en fonction du contact sélectionné
   const getPageTitle = () => {
+    if (showArchive) {
+      return 'Archives - Sans assignation';
+    }
+    
     if (selectedContactId === null) {
       return 'Mes Notes';
     }
@@ -389,16 +598,50 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         }}
         onShowAllNotes={handleShowAllNotes}
         onManageContacts={() => setShowContactsManager(true)}
-        activeView={activeFilter === 'all' && !searchQuery ? 'all' : 'filtered'}
+        onShowArchive={() => {
+          setShowArchive(true);
+          setActiveFilter('all');
+          setSearchQuery('');
+          setSelectedContactId(null);
+        }}
+        activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
       <div className="main-content">
         <header className="notes-header">
           <div className="header-left">
-            <h1>{getPageTitle()}</h1>
+            <div className="title-with-badge">
+              <h1>{getPageTitle()}</h1>
+              {unreadCount > 0 && (
+                <span className="unread-badge" title={`${unreadCount} note(s) non lue(s)`}>
+                  {unreadCount}
+                </span>
+              )}
+            </div>
             {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
           </div>
           <div className="header-right">
+            <button 
+              className={`dark-mode-btn ${darkMode ? 'active' : ''}`}
+              onClick={() => setDarkMode(!darkMode)}
+              title={darkMode ? "Mode clair" : "Mode sombre"}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <button 
+              className={`contacts-toggle-btn ${contactsSidebarOpen ? 'active' : ''}`}
+              onClick={() => setContactsSidebarOpen(!contactsSidebarOpen)}
+              title={contactsSidebarOpen ? "Masquer contacts" : "Afficher contacts"}
+            >
+              {contactsSidebarOpen ? '👥 →' : '← 👥'}
+            </button>
+            <button 
+              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
+              onClick={toggleSelectionMode}
+              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
+            >
+              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
+            </button>
             {onLogout && (
               <button className="logout-btn" onClick={onLogout}>
                 🚪 Déconnexion
@@ -409,15 +652,87 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
       {/* Barre de filtres */}
       <FilterBar
-        onFilterChange={setActiveFilter}
+        onFilterChange={handleFilterChange}
         onSortChange={setSortOrder}
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
       />
 
+      {/* Barre d'actions pour sélection multiple */}
+      {selectionMode && (
+        <div className="selection-toolbar">
+          <div className="selection-info">
+            <span className="selection-count">
+              {selectedNotes.size} note(s) sélectionnée(s)
+            </span>
+          </div>
+          
+          <div className="selection-actions">
+            <button
+              className="selection-action-btn"
+              onClick={selectAllNotes}
+              disabled={selectedNotes.size === notes.length}
+            >
+              Tout sélectionner
+            </button>
+            
+            <button
+              className="selection-action-btn"
+              onClick={clearSelection}
+              disabled={selectedNotes.size === 0}
+            >
+              Désélectionner
+            </button>
+
+            {contactsList.length > 0 && (
+              <div className="batch-assign-dropdown">
+                <select
+                  className="selection-action-btn"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBatchAssign(Number(e.target.value));
+                      e.target.value = '';
+                    }
+                  }}
+                  disabled={selectedNotes.size === 0}
+                >
+                  <option value="">Assigner à...</option>
+                  {contactsList.map(contact => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.nickname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              className="selection-action-btn delete-btn"
+              onClick={handleBatchDelete}
+              disabled={selectedNotes.size === 0}
+            >
+              Supprimer
+            </button>
+
+            <button
+              className="selection-action-btn cancel-btn"
+              onClick={toggleSelectionMode}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Zone de contenu */}
       <div className="notes-content">
-        {loading && <div className="loading">Chargement...</div>}
+        {loading && (
+          <div className="notes-grid">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        )}
         
         {error && (
           <div className="error-banner">
@@ -433,7 +748,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
         {!loading && notes.length > 0 && (
           <div className="notes-grid">
-            {notes.map((note) => (
+            {notes.map((note, index) => (
               <NoteCard
                 key={note.id}
                 note={note}
@@ -445,6 +760,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                 assignments={assignmentsMap.get(note.id) || []}
                 onAssign={handleNoteDrop}
                 contacts={contactsList}
+                isOrphan={(note as any).is_orphan || false}
+                selectionMode={selectionMode}
+                isSelected={selectedNotes.has(note.id)}
+                onToggleSelect={() => toggleNoteSelection(note.id)}
               />
             ))}
           </div>
@@ -457,6 +776,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         refreshTrigger={contactsRefreshTrigger}
         onContactClick={handleContactClick}
         selectedContactId={selectedContactId}
+        isOpen={contactsSidebarOpen}
+        onToggle={() => setContactsSidebarOpen(!contactsSidebarOpen)}
       />
 
       {/* Toast Container */}

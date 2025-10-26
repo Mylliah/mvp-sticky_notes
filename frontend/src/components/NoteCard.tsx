@@ -16,13 +16,18 @@ interface NoteCardProps {
   assignments?: Assignment[]; // Pré-chargé par le parent
   onAssign?: (noteId: number, contactId: number) => void; // Nouveau callback pour l'assignation
   contacts?: Array<{ id: number; nickname: string }>; // Liste des contacts disponibles
+  isOrphan?: boolean; // Indique si la note est orpheline (sans assignation)
+  selectionMode?: boolean; // Mode sélection multiple
+  isSelected?: boolean; // Note sélectionnée
+  onToggleSelect?: () => void; // Callback pour toggler la sélection
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [], onAssign, contacts = [] }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEnd, onClick, assignments = [], onAssign, contacts = [], isOrphan = false, selectionMode = false, isSelected = false, onToggleSelect }: NoteCardProps) {
   const currentUser = authService.getCurrentUser();
   const isMyNote = currentUser && Number(note.creator_id) === Number(currentUser.id);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isPriority, setIsPriority] = useState(false);
+  const [isNew, setIsNew] = useState(false);
   const [creatorName, setCreatorName] = useState<string>('');
   const [recipientsText, setRecipientsText] = useState<string>('');
   const [showAssignMenu, setShowAssignMenu] = useState(false);
@@ -51,6 +56,7 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     if (!currentUser || !assignments || assignments.length === 0) {
       setIsCompleted(false);
       setIsPriority(false);
+      setIsNew(false);
       return;
     }
 
@@ -62,14 +68,20 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     if (myAssignment) {
       const completed = myAssignment.recipient_status === 'terminé';
       const priority = myAssignment.recipient_priority === true;
-      console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed, 'Priorité?', priority);
+      
+      // Badge "Nouveau" si simplement non lu (peu importe la date ou le créateur)
+      const isUnread = !myAssignment.is_read;
+      
+      console.log(`[NoteCard ${note.id}] ✅ Mon assignation:`, myAssignment, 'Terminé?', completed, 'Priorité?', priority, 'Non lu?', isUnread);
       setIsCompleted(completed);
       setIsPriority(priority);
+      setIsNew(isUnread);
     } else {
       setIsCompleted(false);
       setIsPriority(false);
+      setIsNew(false);
     }
-  }, [note.id, currentUser, assignments]);
+  }, [note.id, currentUser, assignments, isMyNote]);
 
   // Charger le nom du créateur et des destinataires
   useEffect(() => {
@@ -93,9 +105,23 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       // Charger les noms des destinataires
       if (assignments && assignments.length > 0) {
         try {
-          // Charger les noms de tous les destinataires
+          // Si je ne suis PAS le créateur, ne montrer que ma propre assignation
+          let assignmentsToShow = assignments;
+          if (!isMyNote && currentUser) {
+            assignmentsToShow = assignments.filter(
+              (assignment) => assignment.user_id === currentUser.id
+            );
+          }
+          
+          // Si aucune assignation à afficher, on arrête
+          if (assignmentsToShow.length === 0) {
+            setRecipientsText('');
+            return;
+          }
+          
+          // Charger les noms des destinataires à afficher
           const recipientNames = await Promise.all(
-            assignments.map(async (assignment) => {
+            assignmentsToShow.map(async (assignment) => {
               // Si c'est moi, afficher "Moi"
               if (currentUser && assignment.user_id === currentUser.id) {
                 return 'Moi';
@@ -194,13 +220,31 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
 
   return (
     <div 
-      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''}`}
-      draggable={true}
+      className={`note-card ${note.important ? 'important' : ''} ${showAssignMenu ? 'menu-open' : ''} ${isOrphan ? 'orphan' : ''} ${selectionMode ? 'selection-mode' : ''} ${isSelected ? 'selected' : ''}`}
+      draggable={!selectionMode}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={() => onClick && onClick(note)}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      onClick={() => {
+        if (selectionMode && onToggleSelect) {
+          onToggleSelect();
+        } else if (onClick) {
+          onClick(note);
+        }
+      }}
+      style={{ cursor: onClick || selectionMode ? 'pointer' : 'default' }}
+      title={isOrphan ? '⚠️ Note sans assignation - Peut être supprimée définitivement' : ''}
     >
+      {/* Checkbox en mode sélection */}
+      {selectionMode && (
+        <div className="note-checkbox" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onToggleSelect}
+          />
+        </div>
+      )}
+
       {/* En-tête avec créateur et date */}
       <div className="note-header">
         <div className="note-metadata">
@@ -259,6 +303,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       {note.important && (
         <div className="important-badge">
           ❗
+        </div>
+      )}
+
+      {/* Badge "Nouveau" si note récemment reçue et non lue - en haut à droite */}
+      {isNew && (
+        <div className="new-badge" title="Reçu récemment">
+          🆕
         </div>
       )}
 

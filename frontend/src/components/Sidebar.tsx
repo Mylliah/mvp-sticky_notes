@@ -5,10 +5,11 @@ interface SidebarProps {
   onNewNote: () => void;
   onShowAllNotes: () => void;
   onManageContacts?: () => void;
-  activeView?: 'all' | 'filtered';
+  onShowArchive?: () => void;
+  activeView?: 'all' | 'filtered' | 'archive';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageContacts, activeView = 'all' }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageContacts, onShowArchive, activeView = 'all' }) => {
   return (
     <div className="sidebar">
       <div className="sidebar-top">
@@ -28,6 +29,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageCo
           onClick={onShowAllNotes}
         >
           <span className="button-icon">📋</span>
+        </button>
+
+        {/* Bouton Archive */}
+        <button 
+          className={`sidebar-button archive-button ${activeView === 'archive' ? 'active' : ''}`}
+          onClick={onShowArchive}
+          title="Notes sans assignation"
+        >
+          <span className="button-icon">📦</span>
         </button>
       </div>
 
