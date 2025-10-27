@@ -20,6 +20,23 @@ services:
         condition: service_healthy
     user: "${UID:-1000}:${GID:-1000}"
 
+  # Frontend React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app          # Monte le code pour hot-reload
+      - /app/node_modules        # Protège node_modules
+    ports:
+      - "3001:3000"  # Port 3001 (3000 a un bug avec docker-compose)
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    stdin_open: true  # Nécessaire pour Vite
+    tty: true
+
   # DB PostgreSQL
   db:
     image: postgres:16
