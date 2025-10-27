@@ -2,8 +2,8 @@
 
 > **Application de gestion collaborative de notes** - Backend API REST avec Flask, PostgreSQL et JWT
 
-[![Tests](https://img.shields.io/badge/tests-196%20passed-success)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-99.8%25-brightgreen)](htmlcov/)
+[![Tests](https://img.shields.io/badge/tests-398%20passed-success)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](htmlcov/)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/flask-3.0-lightgrey)](https://flask.palletsprojects.com/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue)](https://www.postgresql.org/)
@@ -55,6 +55,12 @@
 - ✅ Filtrage par utilisateur et type d'action
 - ✅ Pagination et statistiques
 
+### 🔧 Administration
+- ✅ Routes `/admin/*` pour gestion globale
+- ✅ Consultation de toutes les données
+- ✅ Hard delete et supervision complète
+- ✅ Logs d'actions administratives
+
 ---
 
 ## 🏗️ Architecture
@@ -68,8 +74,15 @@ Backend:
 ├── PostgreSQL 15          # Base de données
 ├── Flask-JWT-Extended     # Authentification JWT
 ├── Flask-Migrate          # Migrations Alembic
+├── Flask-Limiter          # Rate limiting
+├── Flask-CORS             # Cross-Origin Resource Sharing
 ├── Bcrypt                 # Hashage de mots de passe
 └── pytest + pytest-cov    # Tests et coverage
+
+Frontend:
+├── HTML5/CSS3/JavaScript  # Interface utilisateur
+├── Fetch API              # Communication avec backend
+└── LocalStorage           # Persistance locale
 
 Infrastructure:
 ├── Docker & Docker Compose
@@ -84,6 +97,7 @@ mvp-sticky_notes/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py           # Factory app Flask
+│   │   ├── decorators.py         # Décorateurs personnalisés
 │   │   ├── models/               # Modèles SQLAlchemy
 │   │   │   ├── user.py           # 44 lignes, 100% couvert
 │   │   │   ├── note.py           # 34 lignes, 100% couvert
@@ -96,16 +110,22 @@ mvp-sticky_notes/
 │   │       ├── contacts.py       # Gestion contacts
 │   │       ├── assignments.py    # Assignations
 │   │       ├── users.py          # Gestion users
-│   │       └── action_logs.py    # Logs actions
+│   │       ├── action_logs.py    # Logs actions
+│   │       └── admin.py          # Administration
 │   ├── migrations/               # Migrations Alembic
-│   ├── tests/                    # Suite de tests
-│   │   ├── models/               # 72 tests unitaires
-│   │   ├── routes/               # 113 tests d'intégration
-│   │   ├── e2e/                  # 6 tests E2E workflows
-│   │   └── test_app.py           # 5 tests base app
+│   ├── tests/                    # Suite de tests (398 tests)
+│   │   ├── models/               # Tests unitaires modèles
+│   │   ├── routes/               # Tests d'intégration routes
+│   │   ├── e2e/                  # Tests E2E workflows
+│   │   └── test_app.py           # Tests base app
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── pytest.ini
+├── frontend/
+│   ├── index.html                # Page de connexion
+│   ├── dashboard.html            # Interface principale
+│   ├── styles.css                # Styles CSS
+│   └── app.js                    # Logique JavaScript
 ├── docker-compose.yml
 └── README.md
 ```
@@ -326,6 +346,17 @@ Response: 200 OK
 | `/v1/action-logs/:id` | DELETE | ❌ | Supprimer un log |
 | `/v1/action-logs/stats` | GET | ❌ | Statistiques des actions |
 
+### Administration
+
+| Endpoint | Méthode | Auth | Description |
+|----------|---------|------|-------------|
+| `/v1/admin/users` | GET | ✅ | Liste globale utilisateurs |
+| `/v1/admin/notes` | GET | ✅ | Liste globale notes |
+| `/v1/admin/assignments` | GET | ✅ | Liste globale assignations |
+| `/v1/admin/contacts` | GET | ✅ | Liste globale contacts |
+| `/v1/admin/action-logs` | GET | ✅ | Logs d'administration |
+| `/v1/admin/*/:id` | DELETE | ✅ | Hard delete (admin only) |
+
 ---
 
 ## 🧪 Tests
@@ -333,19 +364,19 @@ Response: 200 OK
 ### Statistiques de tests
 
 ```
-✅ 196 tests passent à 100%
-📊 Coverage : 99.8% (493/494 lignes)
-⏱️  Temps d'exécution : ~52 secondes
+✅ 398 tests passent à 100%
+📊 Coverage : 98% (493/502 lignes)
+⏱️  Temps d'exécution : ~65 secondes
 ```
 
 ### Détail par catégorie
 
 | Catégorie | Tests | Coverage | Description |
 |-----------|-------|----------|-------------|
-| **Tests E2E** | 6 | - | Workflows complets utilisateur |
-| **Tests unitaires (models)** | 72 | 100% | Tous les modèles |
-| **Tests intégration (routes)** | 113 | 100% | Toutes les routes |
-| **Tests base app** | 5 | 98% | Health check, JWT handlers |
+| **Tests E2E** | 32 | - | Scénarios complets utilisateur |
+| **Tests unitaires (models)** | ~100 | 100% | Tous les modèles |
+| **Tests intégration (routes)** | ~260 | 98% | Toutes les routes + admin |
+| **Tests base app** | ~6 | 98% | Health check, JWT handlers |
 
 ### Coverage par module
 
@@ -353,10 +384,11 @@ Response: 200 OK
 Module                     Coverage
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 app/__init__.py            98%  (51/52)
+app/decorators.py          100% (15/15)
 app/models/*               100% (130/130)
-app/routes/v1/*            100% (312/312)
+app/routes/v1/*            98%  (312/319)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL                      99.8% (493/494)
+TOTAL                      98%  (493/502)
 ```
 
 ### Lancer les tests
@@ -379,12 +411,49 @@ docker compose exec backend pytest tests/routes/test_notes.py -v
 
 ### Tests E2E - Scénarios couverts
 
-1. **Collaboration complète** : Alice crée une note, ajoute Bob en contact, lui assigne la note, Bob la consulte
-2. **Lifecycle note** : Création → modification → marquage important → terminé → suppression
-3. **Assignations multiples** : Manager assigne la même note à 3 membres
-4. **Isolation utilisateur** : User1 et User2 ne voient que leurs propres notes
-5. **Isolation contacts** : Contacts privés par utilisateur
-6. **Gestion d'erreurs** : Auto-ajout, doublons, opérations invalides
+**32 scénarios testés manuellement et automatiquement** :
+
+#### Authentification & Sécurité (6 scénarios)
+1. Login avec credentials valides → Token JWT reçu
+2. Login avec credentials invalides → Erreur 401
+3. Register avec email valide → Compte créé
+4. Register avec email existant → Erreur 409
+5. Accès route protégée sans token → Redirection login
+6. Token expiré → Erreur 401 et rafraîchissement
+
+#### CRUD Notes (8 scénarios)
+7. Création note vide → Erreur 422 "Content required"
+8. Création note valide → Note créée et affichée
+9. Modification note existante → Mise à jour réussie
+10. Suppression note (créateur) → Soft delete appliqué
+11. Suppression note (non-créateur) → Erreur 403
+12. Marquage note importante → Flag `important=true`
+13. Consultation détails note → Informations complètes
+14. Tri et filtrage des notes → Ordre correct
+
+#### Assignations (8 scénarios)
+15. Assignation note à contact → Création assignment
+16. Assignation en doublon → Erreur 409
+17. Assignation à contact inexistant → Erreur 404
+18. Consultation notes assignées → Visibilité correcte
+19. Marquage note lue → `is_read=true`
+20. Suppression assignation → Note retirée de la vue
+21. Mode sélection multiple → Assignation batch
+22. Annulation assignation (Undo) → Suppression dans les 5s
+
+#### Contacts & Collaboration (6 scénarios)
+23. Ajout contact avec nickname → Contact créé
+24. Recherche utilisateur par username → Résultats filtrés
+25. Modification nickname → Mise à jour sauvegardée
+26. Suppression contact → Confirmation requise
+27. Badge "Mutuel" affiché → Contact réciproque identifié
+28. Isolation des contacts → Chaque user voit ses contacts
+
+#### Fonctionnalités avancées (4 scénarios)
+29. Brouillon auto-save → Sauvegarde localStorage
+30. Restauration brouillon → Message de confirmation
+31. Badge "NOUVEAU" sur note non lue → Affichage < 24h
+32. Archives (notes orphelines) → Bouton 📦 affiche notes sans assignation
 
 ---
 
@@ -487,47 +556,82 @@ docker compose exec backend flask db upgrade
 
 ## 🐛 Bugs connus corrigés
 
-### ✅ Bug d'isolation des notes (CRITIQUE)
+### ✅ Bug d'isolation des notes (CRITIQUE - BUG-001)
 **Problème** : GET `/v1/notes` retournait TOUTES les notes de tous les utilisateurs  
 **Solution** : Ajout d'un filtre par `creator_id` + inclusion des notes assignées avec JOIN  
-**Impact** : Sécurité des données utilisateurs
+**Impact** : Sécurité des données utilisateurs restaurée
 
-### ✅ Notes assignées non visibles
+### ✅ Assignations en doublon (BUG-002)
+**Problème** : Possibilité d'assigner la même note au même contact plusieurs fois  
+**Solution** : Contrainte `UNIQUE(note_id, contact_id)` en base + catch erreur 409  
+**Impact** : Intégrité des données garantie
+
+### ✅ Notes assignées non visibles (BUG-003)
 **Problème** : Un utilisateur ne voyait pas les notes qui lui étaient assignées  
-**Solution** : Modification de la requête pour inclure notes créées OU assignées
+**Solution** : Modification de la requête pour inclure notes créées OU assignées  
+**Impact** : Fonctionnalité de collaboration restaurée
 
-### ✅ API contacts incompatible
+### ✅ Fuite d'informations dans panel Info (BUG-003)
+**Problème** : Le panel Info affichait toutes les assignations d'une note, même pour les non-concernés  
+**Solution** : Filtrage des assignations visibles (créateur ou destinataire uniquement)  
+**Impact** : Confidentialité des assignations préservée
+
+### ✅ Tri incorrect des notes reçues (BUG-004)
+**Problème** : Nouvelles notes reçues triées par `created_date` au lieu de `assigned_date`  
+**Solution** : Tri multi-critères `assigned_date DESC, created_date DESC`  
+**Impact** : UX améliorée, nouvelles assignations visibles immédiatement
+
+### ✅ Suppression impossible avec contraintes FK (BUG-006)
+**Problème** : Erreur 500 "Foreign key constraint failed" lors de la suppression  
+**Solution** : Soft delete uniquement + `ON DELETE SET NULL` sur `action_logs.target_id`  
+**Impact** : Fonctionnalité de suppression stabilisée
+
+### ✅ Affichage user_id au lieu du nickname (BUG-008)
+**Problème** : Cartes de notes affichaient "de 3" au lieu de "de Laura"  
+**Solution** : Appel asynchrone `userService.getUser()` pour récupérer le username  
+**Impact** : Interface utilisateur lisible et professionnelle
+
+### ✅ API contacts incompatible avec tests
 **Problème** : Tests attendaient `user_id`, API utilisait `contact_username`  
-**Solution** : Mise à jour de tous les tests pour utiliser `contact_username`
+**Solution** : Mise à jour de tous les tests pour utiliser `contact_username`  
+**Impact** : Cohérence API/tests assurée
 
 ---
 
 ## 📝 Changelog
 
-### v1.0.0 (2025-10-16)
+### v1.0.0 (2025-01-27)
 
 #### 🎉 Features
-- ✅ API REST complète (6 resources, 30+ endpoints)
-- ✅ Authentification JWT
+- ✅ API REST complète (7 resources, 40+ endpoints)
+- ✅ Authentification JWT avec refresh tokens
 - ✅ Gestion collaborative de notes
 - ✅ Système de contacts et assignations
 - ✅ Logs d'actions traçables
+- ✅ Module d'administration complet
+- ✅ Frontend HTML/CSS/JS fonctionnel
+- ✅ Rate limiting et CORS configurés
 
 #### 🧪 Tests
-- ✅ 196 tests (unitaires + intégration + E2E)
-- ✅ Coverage 99.8%
-- ✅ Tests E2E de workflows réels
+- ✅ 398 tests (unitaires + intégration + E2E)
+- ✅ Coverage 98%
+- ✅ 32 scénarios E2E validés manuellement
+- ✅ Tests Postman automatisés
 
 #### 🔒 Sécurité
 - ✅ Isolation complète des données par utilisateur
 - ✅ Hashage bcrypt des mots de passe
-- ✅ Validation d'inputs
+- ✅ Validation d'inputs stricte
 - ✅ Prévention des doublons et auto-ajouts
+- ✅ Protection CSRF et rate limiting
+- ✅ Soft delete pour l'intégrité des logs
 
 #### 🏗️ Infrastructure
 - ✅ Docker Compose multi-services
 - ✅ Migrations Alembic
 - ✅ PostgreSQL 15
+- ✅ Gunicorn WSGI server
+- ✅ Environnement de développement reproductible
 
 ---
 

@@ -73,7 +73,7 @@ def create_app(test_config=None):
     # Configuration CORS
     CORS(app, resources={
         r"/v1/*": {
-            "origins": os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+            "origins": os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173").split(","),
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "expose_headers": ["Content-Type", "Authorization"],

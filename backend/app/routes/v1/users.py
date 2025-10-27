@@ -4,7 +4,7 @@ Routes pour la gestion des utilisateurs.
 import json
 from flask import Blueprint, request, abort, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from ... import db
 from ...models import User, ActionLog
 
@@ -46,6 +46,7 @@ def update_user(user_id):
         current_user = User.query.get(current_user_id)
         if not current_user or not current_user.is_admin():
             abort(403, description="You can only update your own profile")
+    
     data = request.get_json()
     
     if "username" in data:
@@ -65,8 +66,34 @@ def update_user(user_id):
         if existing:
             abort(400, description="Email already exists")
         user.email = data["email"]
+    
+    # Changement de mot de passe avec validation
+    if "new_password" in data:
+        # Vérifier que current_password est fourni
+        if "current_password" not in data:
+            abort(400, description="Current password is required to change password")
         
-    if "password" in data:
+        # Vérifier que le mot de passe actuel est correct
+        if not check_password_hash(user.password_hash, data["current_password"]):
+            abort(400, description="Current password is incorrect")
+        
+        # Valider la longueur du nouveau mot de passe
+        if len(data["new_password"]) < 8:
+            abort(400, description="New password must be at least 8 characters long")
+        
+        user.password_hash = generate_password_hash(data["new_password"])
+        
+        # Log de changement de mot de passe
+        action_log = ActionLog(
+            user_id=current_user_id,
+            action_type="password_changed",
+            target_id=user_id,
+            payload=json.dumps({"timestamp": "password_updated"})
+        )
+        db.session.add(action_log)
+    
+    # Ancien format "password" (pour compatibilité)
+    elif "password" in data:
         if not data["password"] or data["password"].strip() == "":
             abort(400, description="Password cannot be empty")
         user.password_hash = generate_password_hash(data["password"])
