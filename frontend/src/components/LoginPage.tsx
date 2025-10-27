@@ -99,8 +99,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginP
             <p><strong>Mot de passe:</strong> SecurePass123!</p>
             <p><strong>Email:</strong> saido@test.com</p>
             <p><strong>Mot de passe:</strong> azeqsdwxc</p>
-            <p><strong>Email:</strong> MaoMao</p>
-            <p><strong>Mot de passe:</strong> azeqsdwxc</p>
           </div>
 
           {onSwitchToRegister && (
