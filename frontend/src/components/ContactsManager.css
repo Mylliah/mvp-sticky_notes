@@ -1,0 +1,528 @@
+/* Overlay du modal */
+.contacts-manager-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal principal */
+.contacts-manager-modal {
+  background-color: white;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .contacts-manager-modal {
+  background-color: #1e1e1e;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+/* En-tête */
+.contacts-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.dark-mode .contacts-manager-header {
+  border-bottom-color: #444;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.contacts-manager-header h2 {
+  margin: 0;
+  color: white;
+}
+
+body.dark-mode .contacts-manager-header h2 {
+  color: white;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Contenu du modal avec padding */
+.contacts-manager-content {
+  padding: 24px;
+  max-height: calc(90vh - 80px);
+  overflow-y: auto;
+}
+
+/* Messages */
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border-left: 4px solid #c62828;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border-left: 4px solid #2e7d32;
+}
+
+/* Bouton ajouter */
+.add-contact-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  transition: all 0.3s;
+}
+
+.add-contact-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* Formulaire d'ajout */
+.add-contact-form {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+body.dark-mode .add-contact-form {
+  background-color: #2a2a2a;
+}
+
+.add-contact-form h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+body.dark-mode .add-contact-form h3 {
+  color: #d0d0d0;
+}
+
+.search-user-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+body.dark-mode .search-input {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: #d0d0d0;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.search-btn {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.search-btn:hover {
+  background-color: #1976d2;
+}
+
+.search-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Résultats de recherche */
+.search-results {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+body.dark-mode .search-results {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+.search-result-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+body.dark-mode .search-result-item {
+  border-bottom-color: #444;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background-color: #e3f2fd;
+}
+
+body.dark-mode .search-result-item:hover {
+  background-color: #333;
+}
+
+.user-username {
+  font-weight: 500;
+  color: #333;
+}
+
+body.dark-mode .user-username {
+  color: #d0d0d0;
+}
+
+.user-email {
+  color: #666;
+  font-size: 12px;
+}
+
+body.dark-mode .user-email {
+  color: #999;
+}
+
+/* Utilisateur sélectionné */
+.selected-user {
+  background-color: #e3f2fd;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+body.dark-mode .selected-user {
+  background-color: #2d3a5c;
+}
+
+.cancel-selection-btn {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cancel-selection-btn:hover {
+  background-color: #f57c00;
+}
+
+/* Section surnom */
+.nickname-section {
+  margin-bottom: 16px;
+}
+
+.nickname-section label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #333;
+}
+
+body.dark-mode .nickname-section label {
+  color: #d0d0d0;
+}
+
+.nickname-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+body.dark-mode .nickname-input {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: #d0d0d0;
+}
+
+.nickname-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+/* Actions du formulaire */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.save-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.save-btn:hover {
+  background-color: #45a049;
+}
+
+.save-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cancel-btn:hover {
+  background-color: #d32f2f;
+}
+
+/* Liste des contacts */
+.contacts-list h3 {
+  color: #333;
+  margin-bottom: 16px;
+}
+
+body.dark-mode .contacts-list h3 {
+  color: #d0d0d0;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+body.dark-mode .loading {
+  color: #999;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-style: italic;
+}
+
+body.dark-mode .empty-state {
+  color: #666;
+}
+
+.contacts-grid {
+  display: grid;
+  gap: 12px;
+}
+
+/* Item de contact */
+.contact-item {
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+body.dark-mode .contact-item {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+.contact-item:hover {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .contact-item:hover {
+  background-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-nickname {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+body.dark-mode .contact-nickname {
+  color: #d0d0d0;
+}
+
+.contact-username {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+body.dark-mode .contact-username {
+  color: #999;
+}
+
+.mutual-badge {
+  display: inline-block;
+  background-color: #4caf50;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pending-badge {
+  display: inline-block;
+  background-color: #ff9800;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.contact-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-contact-btn,
+.delete-contact-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px;
+  transition: transform 0.2s;
+}
+
+.edit-contact-btn:hover {
+  transform: scale(1.2);
+}
+
+.delete-contact-btn:hover {
+  transform: scale(1.2);
+  filter: brightness(1.2);
+}
+
+/* Formulaire d'édition inline */
+.edit-contact-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.edit-nickname-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #2196f3;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.save-edit-btn,
+.cancel-edit-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s;
+}
+
+.save-edit-btn {
+  color: #4caf50;
+}
+
+.cancel-edit-btn {
+  color: #f44336;
+}
+
+.save-edit-btn:hover,
+.cancel-edit-btn:hover {
+  transform: scale(1.2);
+}

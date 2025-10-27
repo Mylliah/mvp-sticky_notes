@@ -1,0 +1,315 @@
+/* Overlay du modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal content */
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  padding: 0;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Modal header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid var(--border-color, #e0e0e0);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: white;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Modal body */
+.modal-body {
+  padding: 1.5rem;
+}
+
+.profile-modal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color, #e0e0e0);
+  margin-bottom: 2rem;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: var(--hover-bg, #f5f5f5);
+  color: var(--text-primary, #333);
+}
+
+.tab-btn.active {
+  color: var(--primary-color, #6c5ce7);
+  border-bottom-color: var(--primary-color, #6c5ce7);
+}
+
+.profile-form,
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-section h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-primary, #333);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  padding-bottom: 0.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  font-size: 0.9rem;
+}
+
+body.dark-mode .form-group label {
+  color: #d0d0d0;
+}
+
+.form-group input {
+  padding: 0.75rem;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color, #6c5ce7);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+}
+
+.form-group input:disabled {
+  background: var(--disabled-bg, #f5f5f5);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-group small {
+  color: var(--text-secondary, #666);
+  font-size: 0.85rem;
+}
+
+.info-box {
+  background: var(--info-bg, #f0f0f0);
+  border-left: 4px solid var(--primary-color, #6c5ce7);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.info-box p {
+  margin: 0.5rem 0;
+  color: var(--text-primary, #333);
+  font-size: 0.95rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary-color, #6c5ce7);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover, #5b4bc4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--secondary-bg, #f5f5f5);
+  color: var(--text-primary, #333);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--secondary-hover, #e0e0e0);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark mode */
+body.dark-mode .modal-content {
+  background: var(--dark-card-bg, #2d2d2d);
+  color: var(--dark-text, #e0e0e0);
+}
+
+body.dark-mode .modal-header {
+  border-bottom-color: var(--dark-border, #444);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.dark-mode .modal-header h2 {
+  color: white;
+}
+
+body.dark-mode .close-btn {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+body.dark-mode .close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+body.dark-mode .profile-modal {
+  background: var(--dark-card-bg, #2d2d2d);
+  color: var(--dark-text, #e0e0e0);
+}
+
+body.dark-mode .tab-btn {
+  color: var(--dark-text-secondary, #999);
+}
+
+body.dark-mode .tab-btn:hover {
+  background: var(--dark-hover-bg, #3d3d3d);
+  color: var(--dark-text, #e0e0e0);
+}
+
+body.dark-mode .tab-btn.active {
+  color: var(--primary-color, #6c5ce7);
+}
+
+body.dark-mode .form-group input {
+  background: var(--dark-input-bg, #3d3d3d);
+  border-color: var(--dark-border, #444);
+  color: var(--dark-text, #e0e0e0);
+}
+
+body.dark-mode .form-group input:focus {
+  border-color: var(--primary-color, #6c5ce7);
+}
+
+body.dark-mode .info-box {
+  background: var(--dark-info-bg, #3d3d3d);
+  border-left-color: var(--primary-color, #6c5ce7);
+}
+
+body.dark-mode .btn-secondary {
+  background: var(--dark-secondary-bg, #3d3d3d);
+  color: var(--dark-text, #e0e0e0);
+}
+
+body.dark-mode .btn-secondary:hover:not(:disabled) {
+  background: var(--dark-secondary-hover, #4d4d4d);
+}

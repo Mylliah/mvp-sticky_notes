@@ -1,0 +1,95 @@
+import { Contact, ContactRelationship } from '../types/contact.types';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = `${API_URL}/v1`;
+
+// Récupérer le token depuis localStorage
+function getAuthToken(): string | null {
+  return localStorage.getItem('access_token');
+}
+
+// Headers avec authentification
+function getHeaders(): HeadersInit {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+}
+
+// Fonction helper pour gérer les erreurs API
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ description: 'Unknown error' }));
+    // Le backend Flask utilise "description" pour les messages d'erreur
+    const errorMessage = error.description || error.message || `HTTP error ${response.status}`;
+    throw new Error(errorMessage);
+  }
+  return response.json();
+}
+
+export const contactService = {
+  // Récupérer tous les contacts de l'utilisateur
+  async getContacts(): Promise<ContactRelationship[]> {
+    const response = await fetch(`${API_BASE}/contacts`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  // Récupérer tous les utilisateurs (pour recherche)
+  async getAllUsers(): Promise<Contact[]> {
+    const response = await fetch(`${API_BASE}/users`, {
+      headers: getHeaders(),
+    });
+    const data = await handleResponse<{ users: Contact[] }>(response);
+    return data.users;
+  },
+
+  // Créer un contact
+  async createContact(data: { contact_username: string; nickname: string }): Promise<ContactRelationship> {
+    const response = await fetch(`${API_BASE}/contacts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Modifier un contact
+  async updateContact(contactId: number, data: { nickname?: string; contact_action?: string }): Promise<ContactRelationship> {
+    const response = await fetch(`${API_BASE}/contacts/${contactId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  // Ajouter un contact (ancienne méthode pour compatibilité)
+  async addContact(contactId: number): Promise<ContactRelationship> {
+    const response = await fetch(`${API_BASE}/contacts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ contact_id: contactId }),
+    });
+    return handleResponse(response);
+  },
+
+  // Supprimer un contact
+  async deleteContact(contactId: number): Promise<void> {
+    const response = await fetch(`${API_BASE}/contacts/${contactId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to delete contact' }));
+      throw new Error(error.message || 'Failed to delete contact');
+    }
+  },
+
+  // Supprimer un contact (ancienne méthode pour compatibilité)
+  async removeContact(contactId: number): Promise<void> {
+    return this.deleteContact(contactId);
+  },
+};

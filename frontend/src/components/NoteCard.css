@@ -1,0 +1,416 @@
+/* Carte de note */
+.note-card {
+  background-color: var(--card-bg, #fffacd);
+  color: var(--card-text, #333);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: move;
+  margin-bottom: 16px;
+  height: 170px; /* HAUTEUR FIXE - toutes les cartes font exactement la même taille */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* CHANGÉ : permettre le débordement pour le menu */
+  z-index: 1; /* Z-index de base */
+  
+  /* Animation d'apparition */
+  animation: fadeInCard 0.3s ease-out;
+  opacity: 1;
+}
+
+/* Dark mode pour les cartes */
+body.dark-mode .note-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background-color: #2a2a2a;
+  color: #d0d0d0; /* Texte gris clair pour meilleure lisibilité */
+}
+
+/* Animation d'apparition des notes */
+@keyframes fadeInCard {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation de disparition (appliquée via JS avant suppression) */
+.note-card.removing {
+  animation: fadeOutCard 0.3s ease-in forwards;
+}
+
+@keyframes fadeOutCard {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Mode sélection */
+.note-card.selection-mode {
+  cursor: pointer !important;
+}
+
+.note-card.selected {
+  border: 3px solid #4CAF50;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Checkbox de sélection */
+.note-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background-color: white;
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.note-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #4CAF50;
+}
+
+/* Carte avec menu ouvert - passe au-dessus de tout */
+.note-card.menu-open {
+  z-index: 9999;
+}
+
+.note-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* État pendant le drag */
+.note-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.note-card.important {
+  border-left: 4px solid #ff5722;
+}
+
+/* En-tête de la carte */
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #666;
+  position: relative; /* Important pour le positionnement absolu du menu */
+  z-index: 1; /* Assurer que le header est au-dessus */
+}
+
+.note-metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 32px; /* Espace à gauche pour symétrie et futurs badges */
+}
+
+.note-creator {
+  font-weight: 500;
+}
+
+.note-recipients {
+  font-weight: 500;
+  color: #2196f3;
+  font-style: italic;
+}
+
+.note-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 32px; /* Espace pour le badge ✓ en haut à droite */
+}
+
+.note-date {
+  font-style: italic;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Corps de la note */
+.note-body {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: hidden; /* Empêcher le débordement du texte */
+  text-overflow: ellipsis;
+  flex: 1; /* Prendre l'espace restant */
+  max-height: 90px; /* Réduit encore pour correspondre à la nouvelle hauteur */
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* Limiter à 4 lignes maximum */
+  -webkit-box-orient: vertical;
+  margin-left: 32px; /* Aligné avec le texte "de créateur" et "à user" */
+  padding-right: 32px; /* Équilibrer l'espace à droite */
+}
+
+/* Dark mode pour le corps de note */
+body.dark-mode .note-body {
+  color: #d0d0d0; /* Texte gris clair */
+}
+
+/* Bouton d'édition - en bas à droite, visible uniquement au survol */
+.note-edit-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0; /* Invisible par défaut */
+  z-index: 5;
+}
+
+/* Afficher le bouton d'édition au survol de la carte */
+.note-card:hover .note-edit-btn {
+  opacity: 1;
+}
+
+.note-edit-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Badge important - en haut à gauche */
+.important-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 20px;
+}
+
+/* Badge "terminé" (mini check en haut à droite) */
+.completed-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
+}
+
+/* Badge "terminé partiellement" - vert clair (pour le créateur quand certains contacts ont terminé) */
+.completed-badge.partial {
+  background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+  box-shadow: 0 2px 4px rgba(165, 214, 167, 0.4);
+}
+
+/* Badge "terminé complètement" - vert foncé (pour le créateur quand TOUS ont terminé, ou pour un destinataire qui a terminé) */
+.completed-badge.full {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
+}
+
+/* Badge "Nouveau" - en haut à droite (si pas de completed) */
+.new-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  box-shadow: 0 3px 8px rgba(118, 75, 162, 0.5);
+  animation: fadeInPulse 0.5s ease-in-out, gentlePulse 2s ease-in-out infinite 0.5s;
+  z-index: 10;
+  text-transform: uppercase;
+}
+
+@keyframes fadeInPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Badge priorité (étoile en bas à gauche) */
+.priority-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-size: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Menu d'assignation */
+.assign-menu-container {
+  position: relative;
+  z-index: 1000; /* Très haut pour passer au-dessus de tout */
+}
+
+.assign-btn {
+  background: transparent;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.assign-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.1);
+}
+
+.assign-menu {
+  position: absolute; /* Retour à absolute pour simplicité */
+  top: calc(100% + 4px); /* Juste sous le bouton */
+  right: 0; /* Aligné à droite */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid #ddd;
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10001; /* Au-dessus de la carte qui est à 9999 */
+  opacity: 1; /* Complètement opaque */
+}
+
+.assign-menu-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  border-radius: 8px 8px 0 0;
+}
+
+.assign-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: white;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.assign-menu-item:hover {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+.assign-menu-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+/* Note orpheline (sans assignation) - Mise en surbrillance */
+.note-card.orphan {
+  border: 3px solid #ff9800; /* Bordure orange vif */
+  box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4); /* Ombre orangée */
+  background-color: #fff3e0; /* Fond légèrement orangé */
+  animation: pulse-orphan 2s ease-in-out infinite;
+}
+
+body.dark-mode .note-card.orphan {
+  background-color: #3d2f1f; /* Fond orangé foncé pour le mode nuit */
+  border-color: #ff9800;
+  color: #d0d0d0;
+}
+
+@keyframes pulse-orphan {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.6);
+  }
+}
+
+.note-card.orphan:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.5);
+}
+
+/* Note auto-assignée uniquement (créée par moi ET assignée QU'À moi) */
+.note-card.self-only {
+  background-color: #e1f5fe; /* Fond bleu clair */
+  border-left: 4px solid #0288d1; /* Bordure bleue à gauche */
+}
+
+body.dark-mode .note-card.self-only {
+  background-color: #1a3a4a; /* Bleu foncé en mode sombre */
+  border-left: 4px solid #4fc3f7; /* Bordure bleu clair en mode sombre */
+}
+
+.note-card.self-only:hover {
+  background-color: #b3e5fc; /* Bleu plus prononcé au hover */
+}
+
+body.dark-mode .note-card.self-only:hover {
+  background-color: #254a5e; /* Bleu foncé plus clair au hover */
+}
