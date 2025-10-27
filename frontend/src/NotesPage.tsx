@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import FilterBar, { FilterType, SortOrder } from './components/FilterBar';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
 import ContactBadges from './components/ContactBadges';
 import ContactsManager from './components/ContactsManager';
+import ProfileModal from './components/ProfileModal';
+import SettingsModal from './components/SettingsModal';
 import Sidebar from './components/Sidebar';
 import SkeletonCard from './components/SkeletonCard';
 import ToastContainer, { useToast } from './components/ToastContainer';
@@ -28,7 +30,15 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [showEditor, setShowEditor] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showContactsManager, setShowContactsManager] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [contactsRefreshTrigger, setContactsRefreshTrigger] = useState(0);
+  
+  // Pagination pour scroll infini
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
   
   // Filtres
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -72,8 +82,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Charger les notes
-  const loadNotes = async () => {
+  const loadNotes = async (page = 1, append = false) => {
     console.log('[NotesPage] Loading notes with filters:', { 
+      page,
+      append,
       activeFilter, 
       sortOrder, 
       searchQuery, 
@@ -81,7 +93,11 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       showArchive
     });
     
-    setLoading(true);
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
     
     try {
@@ -100,13 +116,17 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         const data = await response.json();
         console.log('[NotesPage] Orphan notes loaded:', data.count);
         setNotes(data.notes || []);
+        setHasMore(false); // Archive ne supporte pas la pagination pour l'instant
         setLoading(false);
+        setLoadingMore(false);
         return;
       }
       
       const params: any = {
         sort_by: 'created_date',
         sort_order: sortOrder,
+        page: page,
+        per_page: 20,
       };
 
       // Appliquer les filtres
@@ -132,9 +152,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       // On va filtrer côté client après avoir chargé les assignations
       
       const data = await noteService.getNotes(params);
-      console.log('[NotesPage] Notes loaded:', data.notes?.length || 0);
+      console.log('[NotesPage] Notes loaded:', data.notes?.length || 0, 'Total:', data.total);
       
       let notesToDisplay = data.notes || [];
+
+      // Vérifier s'il y a plus de notes à charger
+      const hasMoreNotes = data.notes && data.notes.length === 20;
+      setHasMore(hasMoreNotes);
 
       // Charger toutes les assignations pour les notes chargées
       if (notesToDisplay && notesToDisplay.length > 0) {
@@ -145,14 +169,25 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           const currentUserId = authService.getCurrentUser()?.id;
           
           notesToDisplay = notesToDisplay.filter((note: Note) => {
-            // Vérifier si la note est créée par le contact
+            const noteAssignments = loadedAssignmentsMap.get(note.id) || [];
+            
+            // Si on filtre par "Notes à moi-même" (selectedContactId === currentUserId)
+            if (selectedContactId === currentUserId) {
+              // Afficher uniquement les notes que JE me suis assignées À MOI-MÊME EXCLUSIVEMENT
+              // = créées par moi ET assignées UNIQUEMENT à moi (pas à d'autres contacts)
+              return note.creator_id === currentUserId && 
+                     noteAssignments.length === 1 &&
+                     noteAssignments[0].user_id === currentUserId;
+            }
+            
+            // Pour les autres contacts : afficher les notes partagées avec ce contact
+            // 1. Notes créées par le contact
             if (note.creator_id === selectedContactId) {
               return true;
             }
             
-            // Vérifier si la note est créée par moi et assignée au contact
+            // 2. Notes créées par moi et assignées au contact
             if (note.creator_id === currentUserId) {
-              const noteAssignments = loadedAssignmentsMap.get(note.id) || [];
               return noteAssignments.some(
                 (assignment: Assignment) => assignment.user_id === selectedContactId
               );
@@ -164,7 +199,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         }
       }
       
-      setNotes(notesToDisplay);
+      // Append ou remplacer les notes selon le mode
+      if (append && page > 1) {
+        setNotes(prevNotes => [...prevNotes, ...notesToDisplay]);
+      } else {
+        setNotes(notesToDisplay);
+      }
     } catch (err) {
       console.error('[NotesPage] Error loading notes:', err);
       
@@ -177,6 +217,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       setError(formatErrorMessage(errorResponse));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -212,6 +253,25 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     }
   };
 
+  // Recharger uniquement les assignations d'une note spécifique (optimisation pour drag & drop)
+  const reloadNoteAssignments = async (noteId: number) => {
+    try {
+      console.log('[NotesPage] Reloading assignments for note', noteId);
+      const assignments = await assignmentService.getAssignments({ note_id: noteId });
+      
+      // Mettre à jour uniquement cette note dans la map
+      setAssignmentsMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(noteId, assignments);
+        return newMap;
+      });
+      
+      console.log('[NotesPage] Assignments reloaded for note', noteId, ':', assignments.length, 'assignments');
+    } catch (err) {
+      console.error(`[NotesPage] Error reloading assignments for note ${noteId}:`, err);
+    }
+  };
+
   // Charger les contacts au montage pour créer une map des noms
   useEffect(() => {
     const loadContacts = async () => {
@@ -222,16 +282,20 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         const list: Array<{ id: number; nickname: string }> = [];
         
         contacts.forEach(contact => {
-          console.log('[NotesPage] Contact:', contact.nickname || contact.username, 'is_self:', contact.is_self);
-          // Inclure TOUS les contacts, y compris "Moi" pour permettre l'auto-assignation
-          map.set(contact.contact_user_id, contact.nickname || contact.username);
-          list.push({
-            id: contact.contact_user_id,
-            nickname: contact.nickname || contact.username
-          });
+          console.log('[NotesPage] Contact:', contact.nickname || contact.username, 'is_self:', contact.is_self, 'is_mutual:', contact.is_mutual);
+          // Inclure seulement "Moi" (is_self) ou les contacts mutuels (is_mutual)
+          if (contact.is_self || contact.is_mutual) {
+            map.set(contact.contact_user_id, contact.nickname || contact.username);
+            list.push({
+              id: contact.contact_user_id,
+              nickname: contact.nickname || contact.username
+            });
+          } else {
+            console.log('[NotesPage] Contact excluded (not mutual):', contact.nickname || contact.username);
+          }
         });
         
-        console.log('[NotesPage] Contacts list for assignment menu:', list.length, 'contacts');
+        console.log('[NotesPage] Contacts list for assignment menu:', list.length, 'contacts (mutuels uniquement)');
         setContactsMap(map);
         setContactsList(list);
       } catch (err) {
@@ -243,9 +307,39 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
 
   // Charger les notes au montage et quand les filtres changent
   useEffect(() => {
-    loadNotes();
+    // Reset pagination quand les filtres changent
+    setCurrentPage(1);
+    setHasMore(true);
+    loadNotes(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, sortOrder, searchQuery, selectedContactId, showArchive]);
+
+  // Intersection Observer pour le scroll infini
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMore && !loading && !loadingMore) {
+          console.log('[NotesPage] Loading more notes...');
+          const nextPage = currentPage + 1;
+          setCurrentPage(nextPage);
+          loadNotes(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, loading, loadingMore, currentPage]);
 
   // Calculer le nombre de notes non lues
   useEffect(() => {
@@ -276,7 +370,10 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
   }, [darkMode]);
 
   const handleNoteCreated = async (savedNote: Note, isNew: boolean) => {
-    setShowEditor(false);
+    // Fermer l'éditeur seulement pour une nouvelle note
+    if (isNew) {
+      setShowEditor(false);
+    }
     
     if (isNew) {
       // Nouvelle note : l'ajouter en tête de liste
@@ -291,7 +388,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         return newMap;
       });
     } else {
-      // Note modifiée : mettre à jour dans la liste
+      // Note modifiée : mettre à jour dans la liste SANS fermer l'éditeur
       console.log('[NotesPage] Note modifiée:', savedNote);
       setNotes((prevNotes: Note[]) => 
         prevNotes.map((n: Note) => (n.id === savedNote.id ? savedNote : n))
@@ -419,7 +516,8 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
                   type: 'info',
                   duration: 3000,
                 });
-                loadNotes();
+                // Recharger uniquement les assignations de cette note
+                await reloadNoteAssignments(noteId);
               } catch (err) {
                 const errorResponse = getErrorMessage(err);
                 addToast({
@@ -433,8 +531,14 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         ],
       });
 
-      // Recharger les notes pour mettre à jour l'affichage
-      loadNotes();
+      // Recharger uniquement les assignations de cette note au lieu de tout recharger
+      // SAUF si on est dans la vue Archive : dans ce cas on recharge tout car la note
+      // ne sera plus orpheline et doit disparaître de la liste
+      if (showArchive) {
+        loadNotes();
+      } else {
+        await reloadNoteAssignments(noteId);
+      }
     } catch (err) {
       console.error('[NotesPage] Error assigning note:', err);
       const errorResponse = getErrorMessage(err);
@@ -465,12 +569,6 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     setSelectedContactId(contactId);
     setActiveFilter('all'); // Reset autres filtres
     setSearchQuery('');
-    
-    addToast({
-      message: `Affichage des notes avec ce contact`,
-      type: 'info',
-      duration: 3000,
-    });
   };
 
   // === SÉLECTION MULTIPLE ===
@@ -571,12 +669,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     }
     
     if (selectedContactId === null) {
-      return 'Mes Notes';
+      return 'Toutes mes notes';
     }
     
     // Si c'est l'utilisateur lui-même
     if (currentUser && selectedContactId === currentUser.id) {
-      return 'Mes Notes';
+      return 'Notes à moi-même';
     }
     
     // Chercher le contact dans la liste
@@ -585,14 +683,52 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       return `Notes avec ${contact.nickname}`;
     }
     
-    return 'Mes Notes';
+    return 'Toutes mes notes';
   };
+
+  // Trier les notes pour mettre les non lues en premier
+  const sortedNotes = useMemo(() => {
+    const currentUserId = authService.getCurrentUser()?.id;
+    if (!currentUserId) return notes;
+
+    return [...notes].sort((a, b) => {
+      // Récupérer les assignations de chaque note
+      const assignmentsA = assignmentsMap.get(a.id) || [];
+      const assignmentsB = assignmentsMap.get(b.id) || [];
+      
+      // Trouver l'assignation de l'utilisateur actuel
+      const myAssignmentA = assignmentsA.find((assignment: Assignment) => 
+        Number(assignment.user_id) === Number(currentUserId)
+      );
+      const myAssignmentB = assignmentsB.find((assignment: Assignment) => 
+        Number(assignment.user_id) === Number(currentUserId)
+      );
+      
+      // Déterminer si la note est lue ou non
+      const isReadA = myAssignmentA?.is_read ?? true; // Si pas d'assignation, considérer comme lu
+      const isReadB = myAssignmentB?.is_read ?? true;
+      
+      // Les notes non lues (is_read = false) doivent apparaître en premier
+      if (isReadA === isReadB) {
+        return 0; // Garder l'ordre actuel (par date du backend)
+      }
+      return isReadA ? 1 : -1; // false (non lu) avant true (lu)
+    });
+  }, [notes, assignmentsMap]);
 
   return (
     <div className="notes-page">
       {/* Sidebar gauche */}
       <Sidebar 
         onNewNote={() => {
+          // Si on est sur un filtre actif (important, en_cours, done, received, sent) OU dans les archives
+          // -> Revenir à "Toutes mes notes" avant de créer une note
+          // MAIS on garde le filtrage par contact (selectedContactId)
+          if (showArchive || (activeFilter !== 'all' && !selectedContactId)) {
+            setShowArchive(false);
+            setActiveFilter('all');
+            setSearchQuery('');
+          }
           setSelectedNote(null);
           setShowEditor(true);
         }}
@@ -604,10 +740,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           setSearchQuery('');
           setSelectedContactId(null);
         }}
-        activeView={showArchive ? 'archive' : (activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
+        onShowProfile={() => setShowProfileModal(true)}
+        onShowSettings={() => setShowSettingsModal(true)}
+        activeView={showArchive ? 'archive' : (selectedContactId === null && activeFilter === 'all' && !searchQuery ? 'all' : 'filtered')}
       />
 
-      <div className="main-content">
+      <div className={`main-content ${contactsSidebarOpen ? 'contacts-open' : ''}`}>
         <header className="notes-header">
           <div className="header-left">
             <div className="title-with-badge">
@@ -621,6 +759,13 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             {currentUser && <span className="user-name">Bonjour, {currentUser.username} !</span>}
           </div>
           <div className="header-right">
+            <button 
+              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
+              onClick={toggleSelectionMode}
+              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
+            >
+              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
+            </button>
             <button 
               className={`dark-mode-btn ${darkMode ? 'active' : ''}`}
               onClick={() => setDarkMode(!darkMode)}
@@ -636,17 +781,12 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
               {contactsSidebarOpen ? '👥 →' : '← 👥'}
             </button>
             <button 
-              className={`selection-mode-btn ${selectionMode ? 'active' : ''}`}
-              onClick={toggleSelectionMode}
-              title={selectionMode ? "Quitter le mode sélection" : "Activer le mode sélection"}
+              className="logout-btn"
+              onClick={onLogout}
+              title="Déconnexion"
             >
-              {selectionMode ? '✓ Sélection' : '☐ Sélection'}
+              ⏻
             </button>
-            {onLogout && (
-              <button className="logout-btn" onClick={onLogout}>
-                🚪 Déconnexion
-              </button>
-            )}
           </div>
         </header>
 
@@ -657,6 +797,19 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
       />
+
+      {/* Message d'aide pour les Archives */}
+      {showArchive && (
+        <div className="archive-info-banner">
+          <div className="archive-info-icon">💡</div>
+          <div className="archive-info-content">
+            <strong>Vue Archives</strong>
+            <p>
+              Ici sont stockées vos notes orphelines créées par vous, qui sont non assignées ou supprimées par vos contacts.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Barre d'actions pour sélection multiple */}
       {selectionMode && (
@@ -747,26 +900,44 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
         )}
 
         {!loading && notes.length > 0 && (
-          <div className="notes-grid">
-            {notes.map((note, index) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onEdit={handleEditNote}
-                onClick={handleEditNote}
-                onDelete={handleDeleteNote}
-                onDragStart={setDraggedNote}
-                onDragEnd={() => setDraggedNote(null)}
-                assignments={assignmentsMap.get(note.id) || []}
-                onAssign={handleNoteDrop}
-                contacts={contactsList}
-                isOrphan={(note as any).is_orphan || false}
-                selectionMode={selectionMode}
-                isSelected={selectedNotes.has(note.id)}
-                onToggleSelect={() => toggleNoteSelection(note.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="notes-grid">
+              {sortedNotes.map((note, index) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onEdit={handleEditNote}
+                  onClick={handleEditNote}
+                  onDelete={handleDeleteNote}
+                  onDragStart={setDraggedNote}
+                  onDragEnd={() => setDraggedNote(null)}
+                  assignments={assignmentsMap.get(note.id) || []}
+                  onAssign={handleNoteDrop}
+                  contacts={contactsList}
+                  isOrphan={(note as any).is_orphan || false}
+                  selectionMode={selectionMode}
+                  isSelected={selectedNotes.has(note.id)}
+                  onToggleSelect={() => toggleNoteSelection(note.id)}
+                />
+              ))}
+            </div>
+            
+            {/* Indicateur de chargement pour scroll infini */}
+            {loadingMore && (
+              <div className="loading-more">
+                <div className="notes-grid">
+                  {[1, 2, 3].map((i) => (
+                    <SkeletonCard key={`loading-${i}`} />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Observer target pour déclencher le chargement */}
+            {hasMore && !loadingMore && (
+              <div ref={observerTarget} className="scroll-observer" style={{ height: '20px' }} />
+            )}
+          </>
         )}
       </div>
 
@@ -789,6 +960,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
           note={selectedNote}
           onNoteCreated={handleNoteCreated}
           onNoteDeleted={handleNoteDeleted}
+          autoAssignContactId={selectedContactId}
           onClose={() => {
             setShowEditor(false);
             // Si on a édité une note existante, rafraîchir seulement ses assignations
@@ -808,6 +980,22 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
             // Ne PAS recharger les notes, juste forcer le rechargement des ContactBadges
             setContactsRefreshTrigger(prev => prev + 1);
           }}
+        />
+      )}
+
+      {/* Modal de profil */}
+      {showProfileModal && (
+        <ProfileModal
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
+      {/* Modal de paramètres */}
+      {showSettingsModal && (
+        <SettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode(!darkMode)}
         />
       )}
       </div> {/* Fermeture de main-content */}

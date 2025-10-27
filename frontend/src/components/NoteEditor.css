@@ -26,6 +26,11 @@
   position: relative;
 }
 
+body.dark-mode .note-editor-modal {
+  background-color: #2a2a2a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
 /* Barre d'actions en haut */
 .note-editor-actions {
   display: flex;
@@ -43,11 +48,21 @@
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: #333;
+}
+
+body.dark-mode .action-btn {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #d0d0d0;
 }
 
 .action-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
   transform: translateY(-1px);
+}
+
+body.dark-mode .action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .action-btn:active {
@@ -64,6 +79,21 @@
   font-size: 24px;
   font-weight: bold;
   line-height: 1;
+  color: #000;
+}
+
+.action-btn.close-btn:hover {
+  color: #000;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .action-btn.close-btn {
+  color: #fff;
+}
+
+body.dark-mode .action-btn.close-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Zone de texte */
@@ -80,9 +110,17 @@
   padding: 8px;
 }
 
+body.dark-mode .note-content {
+  color: #d0d0d0;
+}
+
 .note-content::placeholder {
   color: rgba(0, 0, 0, 0.4);
   font-style: italic;
+}
+
+body.dark-mode .note-content::placeholder {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* Section statut de l'assignation */
@@ -90,6 +128,10 @@
   padding: 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   margin-top: 8px;
+}
+
+body.dark-mode .assignment-status {
+  border-top-color: rgba(255, 255, 255, 0.1);
 }
 
 .checkbox-label {
@@ -100,6 +142,10 @@
   font-size: 14px;
   font-weight: 500;
   user-select: none;
+}
+
+body.dark-mode .checkbox-label {
+  color: #d0d0d0;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -142,10 +188,18 @@
   font-size: 14px;
 }
 
+body.dark-mode .info-panel {
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
 .info-panel h3 {
   margin: 0 0 16px 0;
   font-size: 16px;
   color: #333;
+}
+
+body.dark-mode .info-panel h3 {
+  color: #d0d0d0;
 }
 
 .info-section {
@@ -155,10 +209,18 @@
   border-radius: 4px;
 }
 
+body.dark-mode .info-section {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 .info-section strong {
   display: block;
   margin-bottom: 4px;
   color: #555;
+}
+
+body.dark-mode .info-section strong {
+  color: #d0d0d0;
 }
 
 .info-section.deleted-info {
@@ -169,6 +231,10 @@
 .delete-date {
   font-size: 12px;
   color: #999;
+}
+
+body.dark-mode .delete-date {
+  color: #b0b0b0;
 }
 
 .assignments-list {
@@ -188,6 +254,11 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+body.dark-mode .assignment-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .assignment-details {
   display: flex;
   flex-direction: column;
@@ -199,6 +270,10 @@
   font-weight: 500;
   color: #333;
   font-size: 14px;
+}
+
+body.dark-mode .assignment-user {
+  color: #d0d0d0;
 }
 
 .assignment-info {
@@ -231,6 +306,10 @@
   font-size: 11px;
   color: #666;
   font-style: italic;
+}
+
+body.dark-mode .assignment-date {
+  color: #b0b0b0;
 }
 
 .assignment-read {

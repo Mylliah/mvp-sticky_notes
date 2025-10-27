@@ -20,8 +20,10 @@ function getHeaders(): HeadersInit {
 // Fonction helper pour gérer les erreurs API
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.message || `HTTP error ${response.status}`);
+    const error = await response.json().catch(() => ({ description: 'Unknown error' }));
+    // Le backend Flask utilise "description" pour les messages d'erreur
+    const errorMessage = error.description || error.message || `HTTP error ${response.status}`;
+    throw new Error(errorMessage);
   }
   return response.json();
 }
@@ -103,5 +105,25 @@ export const userService = {
       headers: getHeaders(),
     });
     return handleResponse<User[]>(response);
+  },
+
+  // Mettre à jour un utilisateur
+  async updateUser(userId: number, data: {
+    username?: string;
+    email?: string;
+    current_password?: string;
+    new_password?: string;
+  }): Promise<User> {
+    const response = await fetch(`${API_BASE}/users/${userId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    const user = await handleResponse<User>(response);
+    
+    // Mettre à jour le cache
+    userCache.set(userId, user);
+    
+    return user;
   },
 };

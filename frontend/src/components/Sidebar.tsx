@@ -6,10 +6,20 @@ interface SidebarProps {
   onShowAllNotes: () => void;
   onManageContacts?: () => void;
   onShowArchive?: () => void;
+  onShowProfile?: () => void;
+  onShowSettings?: () => void;
   activeView?: 'all' | 'filtered' | 'archive';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageContacts, onShowArchive, activeView = 'all' }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  onNewNote, 
+  onShowAllNotes, 
+  onManageContacts, 
+  onShowArchive, 
+  onShowProfile,
+  onShowSettings,
+  activeView = 'all' 
+}) => {
   return (
     <div className="sidebar">
       <div className="sidebar-top">
@@ -28,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageCo
           className={`sidebar-button all-notes-button ${activeView === 'all' ? 'active' : ''}`}
           onClick={onShowAllNotes}
         >
-          <span className="button-icon">📋</span>
+          <span className="button-icon">📄</span>
         </button>
 
         {/* Bouton Archive */}
@@ -37,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageCo
           onClick={onShowArchive}
           title="Notes sans assignation"
         >
-          <span className="button-icon">📦</span>
+          <span className="button-icon">📁</span>
         </button>
       </div>
 
@@ -52,12 +62,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onNewNote, onShowAllNotes, onManageCo
         </button>
 
         {/* Bouton Profil */}
-        <button className="sidebar-button profile-button" title="Mon profil">
-          <span className="button-icon">M</span>
+        <button className="sidebar-button profile-button" title="Mon profil" onClick={onShowProfile}>
+          <span className="button-icon">👤</span>
         </button>
 
         {/* Bouton Paramètres */}
-        <button className="sidebar-button settings-button" title="Paramètres">
+        <button className="sidebar-button settings-button" title="Paramètres" onClick={onShowSettings}>
           <span className="button-icon">⚙️</span>
         </button>
       </div>

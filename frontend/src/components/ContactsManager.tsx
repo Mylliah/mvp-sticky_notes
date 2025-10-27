@@ -198,9 +198,11 @@ export default function ContactsManager({ onClose, onContactsChanged }: Contacts
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
-        {/* Messages */}
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+        {/* Contenu avec padding */}
+        <div className="contacts-manager-content">
+          {/* Messages */}
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
 
         {/* Bouton ajouter */}
         {!showAddForm && (
@@ -390,7 +392,11 @@ export default function ContactsManager({ onClose, onContactsChanged }: Contacts
             </div>
           )}
         </div>
+        {/* Fin du contenu avec padding */}
+        </div>
+        {/* Fin du modal */}
       </div>
+      {/* Fin de l'overlay */}
     </div>
   );
 }

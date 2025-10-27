@@ -15,14 +15,16 @@ interface NoteEditorProps {
   onNoteCreated?: (note: Note, isNew: boolean) => void; // Passer la note et indiquer si nouvelle
   onNoteDeleted?: () => void;
   onClose?: () => void;
+  autoAssignContactId?: number | null; // ID du contact à assigner automatiquement
 }
 
-export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose }: NoteEditorProps) {
+export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose, autoAssignContactId }: NoteEditorProps) {
   const [content, setContent] = useState('');
   const [important, setImportant] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDraftNotice, setShowDraftNotice] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   
   // Timer pour l'auto-sauvegarde
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -228,6 +230,29 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       const data = await response.json();
       setDeletionHistory(data.deletions || []);
       console.log('📜 Historique des suppressions chargé:', data.deletions);
+      
+      // Charger les utilisateurs manquants dans la map (deleted_by et user_id)
+      if (data.deletions && data.deletions.length > 0) {
+        const userIdsToLoad = new Set<number>();
+        data.deletions.forEach((deletion: any) => {
+          if (!usersMap.has(deletion.deleted_by)) {
+            userIdsToLoad.add(deletion.deleted_by);
+          }
+          if (!usersMap.has(deletion.user_id)) {
+            userIdsToLoad.add(deletion.user_id);
+          }
+        });
+        
+        if (userIdsToLoad.size > 0) {
+          try {
+            const newUsers = await userService.getUsers(Array.from(userIdsToLoad));
+            // Fusionner avec la map existante
+            setUsersMap(new Map([...usersMap, ...newUsers]));
+          } catch (err) {
+            console.error('Error loading deletion users:', err);
+          }
+        }
+      }
     } catch (err) {
       console.error('❌ Error loading deletion history:', err);
       if (handleAuthError(err)) {
@@ -332,33 +357,61 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
 
     try {
       let savedNote: Note;
-      const isNew = !note;
       
       if (note) {
-        // Mode édition
+        // Mode édition : sauvegarder sans fermer
         savedNote = await noteService.updateNote(note.id, {
           content: content.trim(),
           important,
         });
+        
+        // Supprimer le brouillon car la note est sauvegardée
+        clearDraft();
+        console.log('[NoteEditor] ✅ Note mise à jour, brouillon supprimé');
+        
+        // Afficher la confirmation de sauvegarde
+        setShowSaveConfirmation(true);
+        setTimeout(() => setShowSaveConfirmation(false), 2000); // Masquer après 2 secondes
+        
+        // Notifier le parent pour mettre à jour la vignette
+        if (onNoteCreated) {
+          onNoteCreated(savedNote, false); // false = pas une nouvelle note
+        }
+        
+        // NE PAS réinitialiser le formulaire ni fermer l'éditeur
+        // La note reste ouverte avec le contenu mis à jour
+        
       } else {
-        // Mode création
+        // Mode création : créer et fermer
         savedNote = await noteService.createNote({
           content: content.trim(),
           important,
         });
-      }
-      
-      // Réinitialiser le formulaire
-      setContent('');
-      setImportant(false);
-      
-      // Supprimer le brouillon sauvegardé car la note est maintenant enregistrée
-      clearDraft();
-      console.log('[NoteEditor] ✅ Note sauvegardée, brouillon supprimé');
-      
-      // Notifier le parent avec la note sauvegardée et si c'est une nouvelle
-      if (onNoteCreated) {
-        onNoteCreated(savedNote, isNew);
+        
+        // Si on crée depuis la vue d'un contact, assigner automatiquement
+        if (autoAssignContactId !== null && autoAssignContactId !== undefined) {
+          try {
+            await assignmentService.createAssignment({
+              note_id: savedNote.id,
+              user_id: autoAssignContactId
+            });
+            console.log('[NoteEditor] Note automatiquement assignée au contact', autoAssignContactId);
+          } catch (assignErr) {
+            console.error('[NoteEditor] Erreur lors de l\'auto-assignation:', assignErr);
+            // On ne bloque pas la création de la note même si l'assignation échoue
+          }
+        }
+        
+        // Pour une nouvelle note : réinitialiser et fermer
+        setContent('');
+        setImportant(false);
+        clearDraft();
+        console.log('[NoteEditor] ✅ Nouvelle note créée, brouillon supprimé');
+        
+        // Notifier le parent avec la note sauvegardée
+        if (onNoteCreated) {
+          onNoteCreated(savedNote, true); // true = nouvelle note
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde de la note');
@@ -441,6 +494,25 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}>
             💾 Brouillon restauré !
+          </div>
+        )}
+        
+        {/* Message de confirmation de sauvegarde */}
+        {showSaveConfirmation && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#4CAF50',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}>
+            ✅ Note sauvegardée !
           </div>
         )}
         
@@ -539,7 +611,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                 onChange={handleToggleCompleted}
                 disabled={isLoading}
               />
-              <span>✓ Marquer comme terminé</span>
+              <span>Marquer comme terminé ✓</span>
             </label>
           </div>
         )}
@@ -590,9 +662,23 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
 
             {allAssignments.length > 0 && (
               <div className="info-section">
-                <strong>📤 Assignations ({allAssignments.length}) :</strong>
+                <strong>📤 Assignations ({
+                  // Si créateur, afficher toutes les assignations, sinon seulement la sienne
+                  currentUser && note.creator_id === currentUser.id 
+                    ? allAssignments.length 
+                    : allAssignments.filter(a => a.user_id === currentUser?.id).length
+                }) :</strong>
                 <div className="assignments-list">
-                  {allAssignments.map(assignment => {
+                  {allAssignments
+                    .filter(assignment => {
+                      // Si créateur : voir toutes les assignations
+                      // Si destinataire : voir seulement sa propre assignation
+                      if (currentUser && note.creator_id === currentUser.id) {
+                        return true;
+                      }
+                      return assignment.user_id === currentUser?.id;
+                    })
+                    .map(assignment => {
                     const assignedUser = usersMap.get(assignment.user_id);
                     const userName = assignedUser?.username || `Utilisateur #${assignment.user_id}`;
                     const isMe = assignment.user_id === currentUser?.id;
@@ -662,18 +748,35 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
               <div className="info-section deletion-history">
                 <strong>Suppressions ({deletionHistory.length}) :</strong>
                 <div className="deletions-list">
-                  {deletionHistory.map((deletion, index) => (
-                    <div key={index} className="deletion-item">
-                      <span className="deletion-user">
-                        👤 {deletion.username}
-                      </span>
-                      {deletion.deleted_date && (
-                        <span className="deletion-date">
-                          {' '}a supprimé le {new Date(deletion.deleted_date).toLocaleDateString('fr-FR')} à {new Date(deletion.deleted_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  {deletionHistory.map((deletion, index) => {
+                    // Déterminer qui a supprimé : le créateur ou le destinataire
+                    const deletedByUser = usersMap.get(deletion.deleted_by);
+                    const deletedByName = deletedByUser?.username || 
+                      (deletion.deleted_by === currentUser.id ? 'Vous' : `Utilisateur #${deletion.deleted_by}`);
+                    
+                    // Récupérer le destinataire de l'assignation
+                    const recipientUser = usersMap.get(deletion.user_id);
+                    const recipientName = recipientUser?.username || deletion.username || `Utilisateur #${deletion.user_id}`;
+                    
+                    // Message différent si le destinataire supprime sa propre assignation ou si le créateur la supprime
+                    const isSelfDeletion = deletion.deleted_by === deletion.user_id;
+                    const message = isSelfDeletion 
+                      ? `${deletedByName} a supprimé son assignation`
+                      : `${deletedByName} a supprimé l'assignation de ${recipientName}`;
+                    
+                    return (
+                      <div key={index} className="deletion-item">
+                        <span className="deletion-user">
+                          👤 {message}
                         </span>
-                      )}
-                    </div>
-                  ))}
+                        {deletion.deleted_date && (
+                          <span className="deletion-date">
+                            {' '}le {new Date(deletion.deleted_date).toLocaleDateString('fr-FR')} à {new Date(deletion.deleted_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
