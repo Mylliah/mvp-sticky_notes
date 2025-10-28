@@ -231,9 +231,11 @@ mvp-sticky_notes-adminer-1    Up          0.0.0.0:8080->8080/tcp
 # Appliquer les migrations
 docker compose exec backend flask db upgrade
 
-# (Optionnel) Charger des données de test
-docker compose exec backend python seed_data.py
+# (Optionnel) Charger des données de test (accessible sur branche Test)
+./reset_and_seed.sh
 ```
+
+> **Note** : Les scripts de seed créent des utilisateurs et notes de test. Ces données ne sont **pas** incluses dans le repository Git.
 
 ### 4️⃣ Accéder à l'Application
 
@@ -248,7 +250,8 @@ docker compose exec backend python seed_data.py
 
 ## 🔑 Comptes de Test
 
-Pour faciliter vos tests, voici des comptes pré-configurés :
+⚠️ **IMPORTANT : Comptes de développement uniquement**  
+Ces comptes sont fournis pour faciliter les tests en local. **NE JAMAIS utiliser ces credentials en production !**
 
 ### 👤 Utilisateurs Standard
 
@@ -257,7 +260,8 @@ Pour faciliter vos tests, voici des comptes pré-configurés :
 | `testuser1@test.com` | `SecurePass123!` | User | Utilisateur avec données de test |
 | `saido@test.com` | `azeqsdwxc` | User | Utilisateur "Saido" |
 
-> **💡 Note** : Tous les comptes sont des utilisateurs standards. Aucun compte admin n'est configuré pour l'instant.
+> **💡 Note** : Tous les comptes sont des utilisateurs standards. Aucun compte admin n'est configuré pour l'instant.  
+> **🔒 Sécurité** : Ces comptes existent uniquement dans votre base de données locale. Lors du clonage du repo, la base de données sera vide.
 
 ---
 
@@ -738,21 +742,30 @@ docker compose logs -f
 
 ### Variables d'Environnement
 
-Créer un fichier `.env` à la racine :
+⚠️ **Important** : Ne jamais commit de vraies clés secrètes dans Git !
+
+Créer un fichier `.env` à la racine (voir `.env.example` pour référence) :
 
 ```env
 # Flask
 FLASK_ENV=production
-SECRET_KEY=votre_clé_secrète_très_longue_et_aléatoire
+FLASK_SECRET_KEY=CHANGEZ_CETTE_CLE_SECRETE_PRODUCTION
+JWT_SECRET_KEY=CHANGEZ_CETTE_CLE_JWT_PRODUCTION
 
-# Database
+# Database PostgreSQL
 DATABASE_URL=postgresql://user:password@db:5432/sticky_notes_prod
-
-# JWT
-JWT_SECRET_KEY=votre_jwt_secret_très_sécurisé
+POSTGRES_USER=votre_utilisateur_db
+POSTGRES_PASSWORD=CHANGEZ_CE_MOT_DE_PASSE
+POSTGRES_DB=sticky_notes_prod
 
 # Frontend
 VITE_API_URL=https://api.votre-domaine.com/v1
+```
+
+**🔐 Générer des secrets sécurisés** :
+```bash
+# Générer une clé aléatoire forte (32 bytes = 64 caractères hex)
+python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ### Build Production
@@ -770,13 +783,16 @@ docker compose -f docker-compose.prod.yml up -d
 
 ### Checklist Sécurité
 
-- [ ] Changer `SECRET_KEY` et `JWT_SECRET_KEY`
-- [ ] Activer HTTPS (certificat SSL/TLS)
-- [ ] Désactiver Swagger en production
-- [ ] Configurer un reverse proxy (nginx)
-- [ ] Limiter les requêtes (rate limiting)
-- [ ] Activer les logs de sécurité
-- [ ] Backup automatique de la base de données
+- [ ] **Générer** de nouvelles clés aléatoires pour `FLASK_SECRET_KEY` et `JWT_SECRET_KEY`
+- [ ] **Changer** le mot de passe PostgreSQL par défaut (`POSTGRES_PASSWORD`)
+- [ ] **Créer** un fichier `.env` (jamais commité dans Git, déjà dans `.gitignore`)
+- [ ] Activer **HTTPS** (certificat SSL/TLS)
+- [ ] Désactiver **Swagger** en production (`FLASK_ENV=production`)
+- [ ] Configurer un **reverse proxy** (nginx)
+- [ ] Limiter les **requêtes** (rate limiting)
+- [ ] Activer les **logs de sécurité**
+- [ ] **Backup** automatique de la base de données
+- [ ] Utiliser des **variables d'environnement** sur la plateforme d'hébergement (pas de `.env` en production)
 
 ---
 
