@@ -132,6 +132,12 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       // Charger les noms des destinataires
       if (assignments && assignments.length > 0) {
         try {
+          // CAS SPÉCIAL : Note self-only (créée par moi et assignée qu'à moi)
+          if (isMyNote && assignments.length === 1 && currentUser && assignments[0].user_id === currentUser.id) {
+            setRecipientsText('à Moi-même');
+            return;
+          }
+          
           // Si je ne suis PAS le créateur, ne montrer que ma propre assignation
           let assignmentsToShow = assignments;
           if (!isMyNote && currentUser) {
@@ -287,7 +293,10 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       {/* En-tête avec créateur et date */}
       <div className="note-header">
         <div className="note-metadata">
-          <span className="note-creator">de {getCreatorName()}</span>
+          {/* Ne pas afficher "de Moi" pour les notes self-only */}
+          {!isSelfOnlyNote() && (
+            <span className="note-creator">de {getCreatorName()}</span>
+          )}
           {recipientsText && (
             <span className="note-recipients">{recipientsText}</span>
           )}

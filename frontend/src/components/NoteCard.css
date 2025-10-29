@@ -22,9 +22,12 @@
 
 /* Dark mode pour les cartes */
 body.dark-mode .note-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  background-color: #2a2a2a;
-  color: #d0d0d0; /* Texte gris clair pour meilleure lisibilité */
+  box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 3px solid rgba(139, 92, 246, 0.5);
+  color: #e0e0e0;
 }
 
 /* Animation d'apparition des notes */
@@ -224,10 +227,10 @@ body.dark-mode .note-body {
   box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
 }
 
-/* Badge "terminé partiellement" - vert clair (pour le créateur quand certains contacts ont terminé) */
+/* Badge "terminé partiellement" - orange clair (pour le créateur quand certains contacts ont terminé) */
 .completed-badge.partial {
-  background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
-  box-shadow: 0 2px 4px rgba(165, 214, 167, 0.4);
+  background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%);
+  box-shadow: 0 2px 4px rgba(255, 183, 77, 0.4);
 }
 
 /* Badge "terminé complètement" - vert foncé (pour le créateur quand TOUS ont terminé, ou pour un destinataire qui a terminé) */
@@ -377,9 +380,12 @@ body.dark-mode .note-body {
 }
 
 body.dark-mode .note-card.orphan {
-  background-color: #3d2f1f; /* Fond orangé foncé pour le mode nuit */
-  border-color: #ff9800;
-  color: #d0d0d0;
+  background: rgba(120, 120, 120, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 3px solid #ff9800 !important; /* Forcer la bordure orange */
+  box-shadow: 0 8px 32px 0 rgba(255, 152, 0, 0.3);
+  color: #e0e0e0;
 }
 
 @keyframes pulse-orphan {
@@ -399,12 +405,14 @@ body.dark-mode .note-card.orphan {
 /* Note auto-assignée uniquement (créée par moi ET assignée QU'À moi) */
 .note-card.self-only {
   background-color: #e1f5fe; /* Fond bleu clair */
-  border-left: 4px solid #0288d1; /* Bordure bleue à gauche */
 }
 
 body.dark-mode .note-card.self-only {
-  background-color: #1a3a4a; /* Bleu foncé en mode sombre */
-  border-left: 4px solid #4fc3f7; /* Bordure bleu clair en mode sombre */
+  background: rgba(33, 150, 243, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 3px solid rgba(33, 150, 243, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(33, 150, 243, 0.25);
 }
 
 .note-card.self-only:hover {
@@ -412,5 +420,6 @@ body.dark-mode .note-card.self-only {
 }
 
 body.dark-mode .note-card.self-only:hover {
-  background-color: #254a5e; /* Bleu foncé plus clair au hover */
+  background: rgba(33, 150, 243, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(33, 150, 243, 0.35);
 }

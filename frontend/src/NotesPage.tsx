@@ -569,6 +569,7 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
     setSelectedContactId(contactId);
     setActiveFilter('all'); // Reset autres filtres
     setSearchQuery('');
+    setShowArchive(false); // Quitter la vue Archive
   };
 
   // === SÉLECTION MULTIPLE ===

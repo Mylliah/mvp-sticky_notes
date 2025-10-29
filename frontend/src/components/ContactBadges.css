@@ -202,7 +202,12 @@ body.dark-mode .contact-name {
 }
 
 .contact-badge.me .contact-name {
-  color: #f5576c;
+  color: #2196f3;
+  font-weight: 600;
+}
+
+body.dark-mode .contact-badge.me .contact-name {
+  color: #4fc3f7;
   font-weight: 600;
 }
 
