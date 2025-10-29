@@ -405,7 +405,6 @@ body.dark-mode .note-card.orphan {
 /* Note auto-assignée uniquement (créée par moi ET assignée QU'À moi) */
 .note-card.self-only {
   background-color: #e1f5fe; /* Fond bleu clair */
-  border-left: 4px solid #0288d1; /* Bordure bleue à gauche */
 }
 
 body.dark-mode .note-card.self-only {

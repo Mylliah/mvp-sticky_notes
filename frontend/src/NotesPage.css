@@ -350,6 +350,11 @@ body.dark-mode .selection-action-btn:hover:not(:disabled) {
   margin-top: 24px;
 }
 
+/* Assurer une largeur uniforme quand la sidebar contacts est ouverte */
+.main-content.contacts-open .notes-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
 /* Scroll infini - Indicateur de chargement */
 .loading-more {
   margin-top: 20px;
