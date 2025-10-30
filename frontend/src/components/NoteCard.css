@@ -23,7 +23,7 @@
 /* Dark mode pour les cartes */
 body.dark-mode .note-card {
   box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.25);
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(138, 92, 246, 0.13);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 3px solid rgba(139, 92, 246, 0.5);
@@ -425,7 +425,7 @@ body.dark-mode .note-card.orphan {
 }
 
 body.dark-mode .note-card.self-only {
-  background: rgba(33, 150, 243, 0.1);
+  background: rgba(33, 149, 243, 0.123);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 3px solid rgba(33, 150, 243, 0.5);
