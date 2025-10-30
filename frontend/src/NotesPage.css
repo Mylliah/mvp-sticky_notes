@@ -345,14 +345,15 @@ body.dark-mode .selection-action-btn:hover:not(:disabled) {
 /* Grille de notes */
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, 320px);
   gap: 20px;
   margin-top: 24px;
+  justify-content: center;
 }
 
 /* Assurer une largeur uniforme quand la sidebar contacts est ouverte */
 .main-content.contacts-open .notes-grid {
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, 300px);
 }
 
 /* Scroll infini - Indicateur de chargement */
@@ -489,7 +490,7 @@ body.dark-mode .archive-info-banner {
   }
 
   .notes-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, 280px);
     gap: 16px;
   }
 
@@ -508,7 +509,7 @@ body.dark-mode .archive-info-banner {
   }
 }
 
-/* Tablet - 2 colonnes */
+/* Tablet */
 @media (min-width: 641px) and (max-width: 1024px) {
   .main-content {
     margin-left: 80px;
@@ -517,7 +518,7 @@ body.dark-mode .archive-info-banner {
   }
 
   .notes-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, 300px);
     gap: 18px;
   }
 
@@ -526,18 +527,18 @@ body.dark-mode .archive-info-banner {
   }
 }
 
-/* Desktop - 3 colonnes */
+/* Desktop */
 @media (min-width: 1025px) and (max-width: 1440px) {
   .notes-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, 320px);
     gap: 20px;
   }
 }
 
-/* Large Desktop - 4 colonnes */
+/* Large Desktop */
 @media (min-width: 1441px) {
   .notes-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, 320px);
     gap: 20px;
   }
 }
