@@ -124,7 +124,7 @@ body.dark-mode .note-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-left: 32px; /* Espace à gauche pour symétrie et futurs badges */
+  margin-left: 10px; /* Espace à gauche pour symétrie et futurs badges */
 }
 
 .note-creator {
@@ -133,21 +133,34 @@ body.dark-mode .note-card {
 
 .note-recipients {
   font-weight: 500;
-  color: #2196f3;
-  font-style: italic;
+  color: #2196f3; /* Bleu par défaut (pour "à Moi-même") */
+}
+
+/* Violet pour les notes assignées à d'autres personnes */
+.note-recipients.assigned-to-others {
+  color: #9c27b0; /* Violet */
 }
 
 .note-header-right {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: 32px; /* Espace pour le badge ✓ en haut à droite */
+  margin-right: 10px; /* Augmenté pour éviter le chevauchement avec le badge ✓ */
+  position: relative; /* Pour permettre le positionnement absolu des enfants */
+  min-width: 40px; /* Juste l'espace pour le bouton contact */
 }
 
 .note-date {
   font-style: italic;
   text-align: right;
   white-space: nowrap;
+  /* Position en bas à droite de la carte */
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-size: 10px;
+  color: #575555;
+  z-index: 6; /* Au-dessus du bouton d'édition mais en dessous des badges */
 }
 
 /* Corps de la note */
@@ -161,12 +174,13 @@ body.dark-mode .note-card {
   overflow: hidden; /* Empêcher le débordement du texte */
   text-overflow: ellipsis;
   flex: 1; /* Prendre l'espace restant */
-  max-height: 90px; /* Réduit encore pour correspondre à la nouvelle hauteur */
+  max-height: 75px; /* Réduit pour laisser de l'espace à la date en bas */
   display: -webkit-box;
-  -webkit-line-clamp: 4; /* Limiter à 4 lignes maximum */
+  -webkit-line-clamp: 3; /* Limiter à 3 lignes maximum */
   -webkit-box-orient: vertical;
   margin-left: 32px; /* Aligné avec le texte "de créateur" et "à user" */
   padding-right: 32px; /* Équilibrer l'espace à droite */
+  padding-bottom: 30px; /* Espace en bas pour la date */
 }
 
 /* Dark mode pour le corps de note */
@@ -174,11 +188,12 @@ body.dark-mode .note-body {
   color: #d0d0d0; /* Texte gris clair */
 }
 
-/* Bouton d'édition - en bas à droite, visible uniquement au survol */
+/* Bouton d'édition - en bas au centre, visible uniquement au survol */
 .note-edit-btn {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  bottom: 3px;
+  left: 50%; /* Centré horizontalement */
+  transform: translateX(-50%); /* Ajustement pour un centrage parfait */
   background: transparent;
   border: none;
   padding: 4px;
@@ -198,14 +213,14 @@ body.dark-mode .note-body {
 }
 
 .note-edit-btn:hover {
-  transform: scale(1.2);
+  transform: translateX(-50%) scale(1.2); /* Garder le centrage ET agrandir */
 }
 
 /* Badge important - en haut à gauche */
 .important-badge {
   position: absolute;
   top: 12px;
-  left: 12px;
+  left: 2px;
   font-size: 20px;
 }
 
@@ -213,7 +228,7 @@ body.dark-mode .note-body {
 .completed-badge {
   position: absolute;
   top: 12px;
-  right: 12px;
+  right: 8px;
   width: 24px;
   height: 24px;
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
@@ -281,7 +296,7 @@ body.dark-mode .note-body {
 .priority-badge {
   position: absolute;
   bottom: 12px;
-  left: 12px;
+  left: 8px;
   font-size: 20px;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -299,7 +314,9 @@ body.dark-mode .note-body {
 
 /* Menu d'assignation */
 .assign-menu-container {
-  position: relative;
+  position: absolute; /* Positionné de manière absolue */
+  right: 10; /* Collé à droite */
+  top: 0; /* Aligné en haut */
   z-index: 1000; /* Très haut pour passer au-dessus de tout */
 }
 

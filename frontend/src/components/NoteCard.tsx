@@ -30,6 +30,7 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
   const [isNew, setIsNew] = useState(false);
   const [creatorName, setCreatorName] = useState<string>('');
   const [recipientsText, setRecipientsText] = useState<string>('');
+  const [isSelfAssigned, setIsSelfAssigned] = useState(false); // Pour distinguer "à Moi-même" des autres
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -135,8 +136,11 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
           // CAS SPÉCIAL : Note self-only (créée par moi et assignée qu'à moi)
           if (isMyNote && assignments.length === 1 && currentUser && assignments[0].user_id === currentUser.id) {
             setRecipientsText('à Moi-même');
+            setIsSelfAssigned(true);
             return;
           }
+          
+          setIsSelfAssigned(false);
           
           // Si je ne suis PAS le créateur, ne montrer que ma propre assignation
           let assignmentsToShow = assignments;
@@ -298,12 +302,10 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
             <span className="note-creator">de {getCreatorName()}</span>
           )}
           {recipientsText && (
-            <span className="note-recipients">{recipientsText}</span>
+            <span className={`note-recipients ${!isSelfAssigned ? 'assigned-to-others' : ''}`}>{recipientsText}</span>
           )}
         </div>
         <div className="note-header-right" onClick={(e) => e.stopPropagation()}>
-          <span className="note-date">créé le {formatDate(note.created_date)}</span>
-          
           {/* Bouton d'assignation dans le bandeau - visible uniquement pour le créateur */}
           {isMyNote && onAssign && contacts.length > 0 && (
             <div className="assign-menu-container">
@@ -400,6 +402,9 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
           ⭐
         </div>
       )}
+
+      {/* Date de création en bas à droite */}
+      <span className="note-date">créé le {formatDate(note.created_date)}</span>
     </div>
   );
 }
