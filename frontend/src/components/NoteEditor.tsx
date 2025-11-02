@@ -34,6 +34,9 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const [isCompleted, setIsCompleted] = useState(false);
   const currentUser = authService.getCurrentUser();
 
+  // État local pour la note mise à jour (pour afficher les infos à jour)
+  const [currentNote, setCurrentNote] = useState<Note | undefined>(note);
+
   // Gestion du panel d'informations
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
@@ -51,6 +54,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     if (note) {
       setContent(note.content);
       setImportant(note.important);
+      setCurrentNote(note);
       
       // Charger l'assignation de l'utilisateur courant si la note existe
       loadMyAssignment();
@@ -75,6 +79,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       // Réinitialiser si on crée une nouvelle note
       setMyAssignment(null);
       setIsCompleted(false);
+      setCurrentNote(undefined);
     }
   }, [note?.id]); // Dépendance sur note.id au lieu de note pour recharger si l'ID change
 
@@ -305,13 +310,20 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     const newStatus = isCompleted ? 'en_cours' : 'terminé';
     
     try {
-      await assignmentService.updateStatus(myAssignment.id, newStatus);
-      setIsCompleted(!isCompleted);
-      setMyAssignment({ ...myAssignment, recipient_status: newStatus });
+      // Récupérer l'assignation mise à jour depuis l'API (avec finished_date)
+      const updatedAssignment = await assignmentService.updateStatus(myAssignment.id, newStatus);
       
-      // NE PAS recharger toutes les notes, juste mettre à jour l'état local
-      // Le badge sur la NoteCard sera mis à jour à la prochaine ouverture
+      // Mettre à jour l'état local avec l'assignation complète
+      setIsCompleted(!isCompleted);
+      setMyAssignment(updatedAssignment);
+      
+      // Mettre à jour aussi dans la liste complète des assignations pour le panel d'info
+      setAllAssignments((prev: Assignment[]) => 
+        prev.map((a: Assignment) => a.id === updatedAssignment.id ? updatedAssignment : a)
+      );
+      
       console.log('✅ Statut mis à jour:', newStatus);
+      console.log('📅 finished_date:', updatedAssignment.finished_date);
     } catch (err) {
       setError('Erreur lors de la mise à jour du statut');
       console.error('❌ Erreur updateStatus:', err);
@@ -364,6 +376,9 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
           content: content.trim(),
           important,
         });
+        
+        // Mettre à jour l'état local de la note pour que les infos soient à jour instantanément
+        setCurrentNote(savedNote);
         
         // Supprimer le brouillon car la note est sauvegardée
         clearDraft();
@@ -631,30 +646,30 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
         )}
 
         {/* Panel d'informations */}
-        {showInfoPanel && note && (
+        {showInfoPanel && currentNote && (
           <div className="info-panel">
             <h3>📋 Informations de la note</h3>
             
             <div className="info-section">
-              <strong>Créée le :</strong> {new Date(note.created_date).toLocaleString('fr-FR')}
+              <strong>Créée le :</strong> {new Date(currentNote.created_date).toLocaleString('fr-FR')}
             </div>
 
-            {note.update_date && (
+            {currentNote.update_date && (
               <div className="info-section">
-                <strong>Modifiée le :</strong> {new Date(note.update_date).toLocaleString('fr-FR')}
+                <strong>Modifiée le :</strong> {new Date(currentNote.update_date).toLocaleString('fr-FR')}
               </div>
             )}
 
             <div className="info-section">
-              <strong>Créateur :</strong> {creatorName || `Utilisateur #${note.creator_id}`}
+              <strong>Créateur :</strong> {creatorName || `Utilisateur #${currentNote.creator_id}`}
             </div>
 
-            {note.deleted_by && (
+            {currentNote.deleted_by && (
               <div className="info-section deleted-info">
-                <strong>🗑️ Supprimé par :</strong> {usersMap.get(note.deleted_by)?.username || `Utilisateur #${note.deleted_by}`}
-                {note.delete_date && (
+                <strong>🗑️ Supprimé par :</strong> {usersMap.get(currentNote.deleted_by)?.username || `Utilisateur #${currentNote.deleted_by}`}
+                {currentNote.delete_date && (
                   <span className="delete-date">
-                    {' '}le {new Date(note.delete_date).toLocaleDateString('fr-FR')} à {new Date(note.delete_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    {' '}le {new Date(currentNote.delete_date).toLocaleDateString('fr-FR')} à {new Date(currentNote.delete_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
               </div>
@@ -664,7 +679,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
               <div className="info-section">
                 <strong>📤 Assignations ({
                   // Si créateur, afficher toutes les assignations, sinon seulement la sienne
-                  currentUser && note.creator_id === currentUser.id 
+                  currentUser && currentNote.creator_id === currentUser.id 
                     ? allAssignments.length 
                     : allAssignments.filter(a => a.user_id === currentUser?.id).length
                 }) :</strong>
@@ -673,7 +688,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                     .filter(assignment => {
                       // Si créateur : voir toutes les assignations
                       // Si destinataire : voir seulement sa propre assignation
-                      if (currentUser && note.creator_id === currentUser.id) {
+                      if (currentUser && currentNote.creator_id === currentUser.id) {
                         return true;
                       }
                       return assignment.user_id === currentUser?.id;
@@ -721,7 +736,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                         </div>
                         
                         {/* Bouton supprimer uniquement si créateur de la note */}
-                        {currentUser && note.creator_id === currentUser.id && (
+                        {currentUser && currentNote.creator_id === currentUser.id && (
                           <button
                             className="delete-assignment-btn"
                             onClick={() => handleDeleteAssignment(assignment.id)}
@@ -744,7 +759,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             )}
 
             {/* Historique des suppressions (visible uniquement par le créateur) */}
-            {currentUser && note.creator_id === currentUser.id && deletionHistory.length > 0 && (
+            {currentUser && currentNote.creator_id === currentUser.id && deletionHistory.length > 0 && (
               <div className="info-section deletion-history">
                 <strong>Suppressions ({deletionHistory.length}) :</strong>
                 <div className="deletions-list">
