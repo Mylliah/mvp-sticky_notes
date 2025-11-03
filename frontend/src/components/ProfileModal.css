@@ -184,7 +184,7 @@ body.dark-mode .form-group label {
 }
 
 .info-box {
-  background: var(--info-bg, #f0f0f0);
+  background: var(--info-bg, #dad9d9);
   border-left: 4px solid var(--primary-color, #6c5ce7);
   padding: 1rem;
   border-radius: 4px;

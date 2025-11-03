@@ -1,5 +1,12 @@
 import React from 'react';
 import './Sidebar.css';
+import myLogo from '../assets/logo_TNote.png';
+import newNoteIcon from '../assets/new_note.png';
+import allNotesIcon from '../assets/all_sticky_notes.png';
+import archiveIcon from '../assets/archives.png';
+import contactsIcon from '../assets/contacts.png';
+import profileIcon from '../assets/profil_.png';
+import settingsIcon from '../assets/settings.png';
 
 interface SidebarProps {
   onNewNote: () => void;
@@ -23,14 +30,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="sidebar">
       <div className="sidebar-top">
-        {/* Logo */}
+        {/* Logo personnalisé*/}
         <div className="sidebar-logo">
-          <div className="logo-placeholder">LOGO</div>
+          <img 
+            src={myLogo} 
+            alt="TNote Logo" 
+            className="sidebar-logo-img" 
+          />
         </div>
 
         {/* Bouton Nouvelle note */}
         <button className="sidebar-button new-note-button" onClick={onNewNote}>
-          <span className="button-icon">+</span>
+          <img src={newNoteIcon} alt="Nouvelle note" className="button-icon-img" />
         </button>
 
         {/* Bouton Toutes mes notes */}
@@ -38,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={`sidebar-button all-notes-button ${activeView === 'all' ? 'active' : ''}`}
           onClick={onShowAllNotes}
         >
-          <span className="button-icon">📄</span>
+          <img src={allNotesIcon} alt="Toutes mes notes" className="button-icon-img" />
         </button>
 
         {/* Bouton Archive */}
@@ -47,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={onShowArchive}
           title="Notes sans assignation"
         >
-          <span className="button-icon">📁</span>
+          <img src={archiveIcon} alt="Archive" className="button-icon-img" />
         </button>
       </div>
 
@@ -58,17 +69,17 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={onManageContacts}
           title="Gérer mes contacts"
         >
-          <span className="button-icon">👥</span>
+          <img src={contactsIcon} alt="Contacts" className="button-icon-img" />
         </button>
 
         {/* Bouton Profil */}
         <button className="sidebar-button profile-button" title="Mon profil" onClick={onShowProfile}>
-          <span className="button-icon">👤</span>
+          <img src={profileIcon} alt="Profil" className="button-icon-img" />
         </button>
 
         {/* Bouton Paramètres */}
         <button className="sidebar-button settings-button" title="Paramètres" onClick={onShowSettings}>
-          <span className="button-icon">⚙️</span>
+          <img src={settingsIcon} alt="Paramètres" className="button-icon-img" />
         </button>
       </div>
     </div>

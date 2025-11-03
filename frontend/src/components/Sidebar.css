@@ -33,6 +33,18 @@
 /* Logo */
 .sidebar-logo {
   margin-bottom: 10px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
 }
 
 .logo-placeholder {
@@ -78,44 +90,92 @@
 
 /* Bouton Nouvelle note */
 .new-note-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: transparent;
   font-size: 32px;
   font-weight: bold;
+  padding: 0;
+  overflow: hidden;
 }
 
 .new-note-button:hover {
-  background: linear-gradient(135deg, #7c8ef7 0%, #8b5bb8 100%);
+  background: transparent;
   transform: translateY(-2px) scale(1.05);
 }
 
+.button-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
 /* Bouton Toutes mes notes */
+.all-notes-button {
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+}
+
 .all-notes-button.active {
-  background: rgba(102, 126, 234, 0.3);
   border: 2px solid #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
 }
 
 .all-notes-button:hover {
-  background: rgba(102, 126, 234, 0.2);
+  background: transparent;
+}
+
+/* Bouton Archive */
+.archive-button {
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+}
+
+.archive-button.active {
+  border: 2px solid #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+}
+
+.archive-button:hover {
+  background: transparent;
+}
+
+/* Bouton Contacts */
+.contacts-button {
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+}
+
+.contacts-button:hover {
+  background: transparent;
+  transform: translateY(-2px);
 }
 
 /* Bouton Profil */
 .profile-button {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  font-size: 18px;
-  font-weight: bold;
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
 }
 
 .profile-button:hover {
-  background: linear-gradient(135deg, #f5a3ff 0%, #ff6b7f 100%);
+  background: transparent;
+  transform: translateY(-2px);
 }
 
 /* Bouton Paramètres */
 .settings-button {
-  font-size: 20px;
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
 }
 
 .settings-button:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: transparent;
+  transform: translateY(-2px);
 }
 
 .button-icon {
