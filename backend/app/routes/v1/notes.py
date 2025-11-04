@@ -474,3 +474,61 @@ def get_deletion_history(note_id):
             continue
     
     return {"deletions": deletions}
+
+
+@bp.get('/notes/<int:note_id>/completion-history')
+@jwt_required()
+def get_completion_history(note_id):
+    """
+    Récupérer l'historique des completions d'assignations pour une note.
+    Accessible uniquement au créateur de la note.
+    Retourne uniquement les completions actives (celles qui n'ont pas été décochées).
+    """
+    from ...models import User
+    
+    note = Note.query.get_or_404(note_id)
+    current_user_id = int(get_jwt_identity())
+    
+    # Vérifier que l'utilisateur est le créateur de la note
+    if note.creator_id != current_user_id:
+        abort(403, description="Only the creator can view completion history")
+    
+    # Récupérer les logs de completions ET d'uncompletions pour cette note
+    completion_logs = ActionLog.query.filter(
+        ActionLog.action_type.in_(['assignment_completed', 'assignment_uncompleted'])
+    ).order_by(ActionLog.timestamp.desc()).all()
+    
+    # Filtrer ceux qui concernent cette note et déterminer l'état actuel de chaque assignation
+    completions_by_assignment = {}  # assignment_id -> dernier log
+    
+    for log in completion_logs:
+        try:
+            payload = json.loads(log.payload)
+            if payload.get("note_id") == note_id:
+                assignment_id = log.target_id
+                
+                # Garder seulement le log le plus récent pour chaque assignation
+                if assignment_id not in completions_by_assignment:
+                    completions_by_assignment[assignment_id] = log
+                elif log.timestamp > completions_by_assignment[assignment_id].timestamp:
+                    completions_by_assignment[assignment_id] = log
+        except (json.JSONDecodeError, KeyError):
+            continue
+    
+    # Construire la liste des completions actives (celles qui sont "completed" et pas "uncompleted")
+    completions = []
+    for assignment_id, log in completions_by_assignment.items():
+        if log.action_type == "assignment_completed":
+            payload = json.loads(log.payload)
+            user_id = payload.get("user_id")
+            user = User.query.get(user_id)
+            
+            completions.append({
+                "assignment_id": assignment_id,
+                "user_id": user_id,
+                "username": user.username if user else f"User #{user_id}",
+                "completed_date": log.timestamp.isoformat() if log.timestamp else None,
+                "completed_by": log.user_id,  # Normalement = user_id (le destinataire)
+            })
+    
+    return {"completions": completions}

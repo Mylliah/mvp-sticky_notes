@@ -48,6 +48,13 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     deleted_date: string;
     deleted_by: number;
   }>>([]);
+  const [completionHistory, setCompletionHistory] = useState<Array<{
+    assignment_id: number;
+    user_id: number;
+    username: string;
+    completed_date: string;
+    completed_by: number;
+  }>>([]);
 
   // Charger la note si on est en mode édition
   useEffect(() => {
@@ -112,10 +119,11 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     };
   }, [content, important, note?.id]);
 
-  // Charger l'historique des suppressions quand le panel d'info s'ouvre
+  // Charger l'historique des suppressions et completions quand le panel d'info s'ouvre
   useEffect(() => {
     if (showInfoPanel && note) {
       loadDeletionHistory();
+      loadCompletionHistory();
     }
   }, [showInfoPanel, note?.id]);
 
@@ -266,6 +274,58 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
     }
   };
 
+  const loadCompletionHistory = async () => {
+    if (!note || !currentUser) {
+      return;
+    }
+    
+    // Seulement le créateur peut voir l'historique des completions
+    if (note.creator_id !== currentUser.id) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/v1/notes/${note.id}/completion-history`, {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load completion history');
+      }
+      
+      const data = await response.json();
+      setCompletionHistory(data.completions || []);
+      console.log('✅ Historique des completions chargé:', data.completions);
+      
+      // Charger les utilisateurs manquants dans la map
+      if (data.completions && data.completions.length > 0) {
+        const userIdsToLoad = new Set<number>();
+        data.completions.forEach((completion: any) => {
+          if (!usersMap.has(completion.user_id)) {
+            userIdsToLoad.add(completion.user_id);
+          }
+        });
+        
+        if (userIdsToLoad.size > 0) {
+          try {
+            const newUsers = await userService.getUsers(Array.from(userIdsToLoad));
+            // Fusionner avec la map existante
+            setUsersMap(new Map([...usersMap, ...newUsers]));
+          } catch (err) {
+            console.error('Error loading completion users:', err);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error loading completion history:', err);
+      if (handleAuthError(err)) {
+        return; // Redirection en cours
+      }
+    }
+  };
+
   const markAsRead = async (assignmentId: number) => {
     try {
       console.log('📖 Marquage comme lu de l\'assignation', assignmentId);
@@ -321,6 +381,11 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       setAllAssignments((prev: Assignment[]) => 
         prev.map((a: Assignment) => a.id === updatedAssignment.id ? updatedAssignment : a)
       );
+      
+      // Recharger l'historique des completions pour le créateur
+      if (currentUser && note && note.creator_id === currentUser.id) {
+        loadCompletionHistory();
+      }
       
       console.log('✅ Statut mis à jour:', newStatus);
       console.log('📅 finished_date:', updatedAssignment.finished_date);
@@ -721,11 +786,6 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                                 ✉️ Non lu
                               </span>
                             )}
-                            {assignment.finished_date && (
-                              <span className="assignment-finished">
-                                🏁 Terminé le {new Date(assignment.finished_date).toLocaleDateString('fr-FR')} à {new Date(assignment.finished_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            )}
                             {/* La priorité est personnelle : visible uniquement pour le destinataire concerné */}
                             {assignment.recipient_priority && isMe && (
                               <span className="assignment-priority">
@@ -755,6 +815,31 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             {allAssignments.length === 0 && (
               <div className="info-section">
                 <em>Cette note n'est assignée à personne</em>
+              </div>
+            )}
+
+            {/* Historique des completions (visible uniquement par le créateur) */}
+            {currentUser && currentNote.creator_id === currentUser.id && completionHistory.length > 0 && (
+              <div className="info-section completion-history">
+                <strong>Terminés ({completionHistory.length}) :</strong>
+                <div className="completions-list">
+                  {completionHistory.map((completion, index) => {
+                    const userName = completion.username || `Utilisateur #${completion.user_id}`;
+                    
+                    return (
+                      <div key={index} className="completion-item">
+                        <span className="completion-user">
+                          ✅ {userName} a terminé sa note
+                        </span>
+                        {completion.completed_date && (
+                          <span className="completion-date">
+                            {' '}le {new Date(completion.completed_date).toLocaleDateString('fr-FR')} à {new Date(completion.completed_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

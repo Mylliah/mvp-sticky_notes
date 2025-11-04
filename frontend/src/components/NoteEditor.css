@@ -104,7 +104,7 @@ body.dark-mode .action-btn.close-btn:hover {
   resize: none;
   outline: none;
   font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
-  font-size: 16px;
+  font-size: 22px;
   line-height: 1.6;
   color: #333;
   padding: 8px;
@@ -358,4 +358,100 @@ body.dark-mode .assignment-date {
 
 .delete-assignment-btn:active {
   transform: scale(0.95);
+}
+
+/* Historique des completions */
+.completion-history {
+  background-color: rgba(76, 175, 80, 0.05);
+  border-left: 3px solid #4caf50;
+}
+
+.completions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.completion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+body.dark-mode .completion-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.completion-user {
+  font-weight: 500;
+  color: #2e7d32;
+  font-size: 13px;
+}
+
+body.dark-mode .completion-user {
+  color: #66bb6a;
+}
+
+.completion-date {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
+body.dark-mode .completion-date {
+  color: #b0b0b0;
+}
+
+/* Historique des suppressions */
+.deletion-history {
+  background-color: rgba(255, 87, 87, 0.05);
+  border-left: 3px solid #ff5757;
+}
+
+.deletions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.deletion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 87, 87, 0.2);
+}
+
+body.dark-mode .deletion-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 87, 87, 0.3);
+}
+
+.deletion-user {
+  font-weight: 500;
+  color: #c62828;
+  font-size: 13px;
+}
+
+body.dark-mode .deletion-user {
+  color: #ef5350;
+}
+
+.deletion-date {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
+body.dark-mode .deletion-date {
+  color: #b0b0b0;
 }

@@ -253,11 +253,15 @@ def update_status(assignment_id):
     if data["recipient_status"] not in valid_statuses:
         abort(400, description=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
     
+    # Déterminer l'action selon le statut (pour le log)
+    old_status = assignment.recipient_status
+    new_status = data["recipient_status"]
+    
     # Mettre à jour le statut
-    assignment.recipient_status = data["recipient_status"]
+    assignment.recipient_status = new_status
     
     # Gérer finished_date selon le statut
-    if data["recipient_status"] == "terminé":
+    if new_status == "terminé":
         # Marquer comme terminé avec timestamp
         assignment.finished_date = datetime.now(timezone.utc)
     else:
@@ -266,15 +270,27 @@ def update_status(assignment_id):
     
     db.session.commit()
     
-    # Log de modification de statut
-    action_log = ActionLog(
-        user_id=current_user_id,
-        action_type="assignment_status_updated",
-        target_id=assignment.id,
-        payload=json.dumps({"status": assignment.recipient_status})
-    )
-    db.session.add(action_log)
-    db.session.commit()
+    # Log de modification de statut avec type spécifique
+    # Si on passe de 'en_cours' à 'terminé' => assignment_completed
+    # Si on passe de 'terminé' à 'en_cours' => assignment_uncompleted
+    if old_status != new_status:
+        if new_status == "terminé":
+            action_type = "assignment_completed"
+        else:
+            action_type = "assignment_uncompleted"
+        
+        action_log = ActionLog(
+            user_id=current_user_id,
+            action_type=action_type,
+            target_id=assignment.id,
+            payload=json.dumps({
+                "status": new_status,
+                "note_id": assignment.note_id,
+                "user_id": assignment.user_id
+            })
+        )
+        db.session.add(action_log)
+        db.session.commit()
     
     return assignment.to_dict()
 
