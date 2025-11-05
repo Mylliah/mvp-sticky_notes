@@ -32,6 +32,7 @@ services:
       - "3001:3000"  # Port 3001 (3000 a un bug avec docker-compose)
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://localhost:5000
     depends_on:
       - backend
     stdin_open: true  # Nécessaire pour Vite
