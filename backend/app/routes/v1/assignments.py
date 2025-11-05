@@ -5,7 +5,8 @@ import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ... import db
-from ...models import Assignment, Note, User, ActionLog
+from ...models import Assignment, Note, ActionLog
+from ...services import AssignmentService
 
 bp = Blueprint('assignments', __name__)
 
@@ -19,59 +20,26 @@ def create_assignment():
         
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que la note et l'utilisateur existent
-    note = db.session.get(Note, data["note_id"])
-    if not note:
-        abort(400, description="Note not found")
-    user = db.session.get(User, data["user_id"])
-    if not user:
-        abort(400, description="User not found")
-    
-    # Vérifier que l'utilisateur est le créateur de la note
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can assign this note")
-    
-    # Si on assigne à quelqu'un d'autre (pas soi-même), vérifier que le contact est mutuel
-    if data["user_id"] != current_user_id:
-        from ...models import Contact
-        contact = Contact.query.filter_by(
-            user_id=current_user_id,
-            contact_user_id=data["user_id"]
-        ).first()
-        
-        if not contact:
-            abort(400, description="User is not in your contacts")
-        
-        if not contact.is_mutual():
-            abort(403, description="Cannot assign note: contact has not added you back yet")
-        
-    # Vérifier qu'il n'y a pas déjà une assignation
-    existing = Assignment.query.filter_by(
-        note_id=data["note_id"], 
-        user_id=data["user_id"]
-    ).first()
-    if existing:
-        abort(400, description="Assignment already exists")
-        
-    assignment = Assignment(
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.create_assignment(
         note_id=data["note_id"],
         user_id=data["user_id"],
+        creator_id=current_user_id,
         is_read=data.get("is_read", False)
     )
-    db.session.add(assignment)
-    db.session.commit()
     
     # Log de création d'assignation
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="assignment_created",
-        target_id=assignment.id,
+        target_id=assignment["id"],
         payload=json.dumps({"note_id": data["note_id"], "assigned_to": data["user_id"]})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return assignment.to_dict(), 201
+    return assignment, 201
 
 @bp.get('/assignments')
 @jwt_required()
@@ -106,98 +74,58 @@ def list_assignments():
 @jwt_required()
 def get_assignment(assignment_id):
     """Récupérer une assignation par son ID."""
-    assignment = Assignment.query.get_or_404(assignment_id)
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est soit le créateur de la note, soit le destinataire
-    note = db.session.get(Note, assignment.note_id)
-    if note.creator_id != current_user_id and assignment.user_id != current_user_id:
-        abort(403, description="You can only view your own assignments")
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.get_assignment(assignment_id, current_user_id)
     
-    return assignment.to_dict()
+    return assignment
 
 @bp.put('/assignments/<int:assignment_id>')
 @jwt_required()
 def update_assignment(assignment_id):
     """Mettre à jour une assignation (authentification requise)."""
-    assignment = Assignment.query.get_or_404(assignment_id)
     current_user_id = int(get_jwt_identity())
-    
-    # Vérifier que l'utilisateur est soit le créateur de la note, soit le destinataire
-    note = db.session.get(Note, assignment.note_id)
-    if note.creator_id != current_user_id and assignment.user_id != current_user_id:
-        abort(403, description="You can only update your own assignments")
-    
-    # Le destinataire ne peut modifier que is_read, pas user_id
     data = request.get_json()
     
-    if "user_id" in data:
-        # Seul le créateur peut changer le destinataire
-        if note.creator_id != current_user_id:
-            abort(403, description="Only the creator can change the assignment recipient")
-        
-        # Vérifier que le nouvel utilisateur existe
-        user = db.session.get(User, data["user_id"])
-        if not user:
-            abort(400, description="User not found")
-        # Vérifier qu'il n'y a pas déjà une assignation avec ce user
-        existing = Assignment.query.filter_by(
-            note_id=assignment.note_id, 
-            user_id=data["user_id"]
-        ).filter(Assignment.id != assignment_id).first()
-        if existing:
-            abort(400, description="Assignment already exists for this user")
-        assignment.user_id = data["user_id"]
-        
-    if "is_read" in data:
-        assignment.is_read = data["is_read"]
-        # Mettre à jour read_date si on marque comme lu
-        if data["is_read"] and not assignment.read_date:
-            from datetime import datetime, timezone
-            assignment.read_date = datetime.now(timezone.utc)
-        
-    db.session.commit()
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.update_assignment(
+        assignment_id=assignment_id,
+        current_user_id=current_user_id,
+        is_read=data.get("is_read"),
+        user_id=data.get("user_id")
+    )
     
     # Log de modification d'assignation
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="assignment_updated",
-        target_id=assignment.id,
-        payload=json.dumps({"note_id": assignment.note_id, "user_id": assignment.user_id})
+        target_id=assignment["id"],
+        payload=json.dumps({"note_id": assignment["note_id"], "user_id": assignment["user_id"]})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return assignment.to_dict()
+    return assignment
 
 @bp.delete('/assignments/<int:assignment_id>')
 @jwt_required()
 def delete_assignment(assignment_id):
     """Supprimer une assignation (authentification requise)."""
-    assignment = Assignment.query.get_or_404(assignment_id)
     current_user_id = int(get_jwt_identity())
     
-    # Le créateur de la note OU le destinataire peut supprimer l'assignation
-    note = db.session.get(Note, assignment.note_id)
-    is_creator = note.creator_id == current_user_id
-    is_recipient = assignment.user_id == current_user_id
-    
-    if not is_creator and not is_recipient:
-        abort(403, description="Only the creator or the recipient can delete this assignment")
-    
-    # Sauvegarder info pour le log
-    note_id = assignment.note_id
-    assigned_user_id = assignment.user_id
-    
-    db.session.delete(assignment)
-    db.session.commit()
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.delete_assignment(assignment_id, current_user_id)
     
     # Log de suppression d'assignation
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="assignment_deleted",
         target_id=assignment_id,
-        payload=json.dumps({"note_id": note_id, "assigned_user_id": assigned_user_id})
+        payload=json.dumps({"note_id": assignment["note_id"], "assigned_user_id": assignment["user_id"]})
     )
     db.session.add(action_log)
     db.session.commit()
@@ -209,70 +137,43 @@ def delete_assignment(assignment_id):
 def toggle_priority(assignment_id):
     """Basculer la priorité personnelle du destinataire (authentification requise)."""
     current_user_id = int(get_jwt_identity())
-    assignment = Assignment.query.get_or_404(assignment_id)
     
-    # Vérifier que l'utilisateur connecté est bien le destinataire
-    if assignment.user_id != current_user_id:
-        abort(403, description="You can only toggle priority on your own assignments")
-    
-    # Basculer la priorité
-    assignment.recipient_priority = not assignment.recipient_priority
-    db.session.commit()
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.toggle_priority(assignment_id, current_user_id)
     
     # Log de modification de priorité
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="assignment_priority_updated",
-        target_id=assignment.id,
-        payload=json.dumps({"priority": assignment.recipient_priority})
+        target_id=assignment["id"],
+        payload=json.dumps({"priority": assignment["recipient_priority"]})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return assignment.to_dict()
+    return assignment
 
 @bp.put('/assignments/<int:assignment_id>/status')
 @jwt_required()
 def update_status(assignment_id):
     """Modifier le statut personnel du destinataire (authentification requise)."""
-    from datetime import datetime, timezone
-    
     current_user_id = int(get_jwt_identity())
-    assignment = Assignment.query.get_or_404(assignment_id)
-    
-    # Vérifier que l'utilisateur connecté est bien le destinataire
-    if assignment.user_id != current_user_id:
-        abort(403, description="You can only update status on your own assignments")
-    
     data = request.get_json()
+    
     if not data or "recipient_status" not in data:
         abort(400, description="Missing recipient_status")
     
-    # Valider le statut
-    valid_statuses = ['en_cours', 'terminé']
-    if data["recipient_status"] not in valid_statuses:
-        abort(400, description=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
-    
-    # Déterminer l'action selon le statut (pour le log)
-    old_status = assignment.recipient_status
+    # Récupérer l'ancien statut pour le log
+    assignment_obj = Assignment.query.get_or_404(assignment_id)
+    old_status = assignment_obj.recipient_status
     new_status = data["recipient_status"]
     
-    # Mettre à jour le statut
-    assignment.recipient_status = new_status
-    
-    # Gérer finished_date selon le statut
-    if new_status == "terminé":
-        # Marquer comme terminé avec timestamp
-        assignment.finished_date = datetime.now(timezone.utc)
-    else:
-        # Remettre en cours : reset finished_date
-        assignment.finished_date = None
-    
-    db.session.commit()
+    # Utiliser le service
+    service = AssignmentService()
+    assignment = service.update_status(assignment_id, current_user_id, new_status)
     
     # Log de modification de statut avec type spécifique
-    # Si on passe de 'en_cours' à 'terminé' => assignment_completed
-    # Si on passe de 'terminé' à 'en_cours' => assignment_uncompleted
     if old_status != new_status:
         if new_status == "terminé":
             action_type = "assignment_completed"
@@ -282,17 +183,17 @@ def update_status(assignment_id):
         action_log = ActionLog(
             user_id=current_user_id,
             action_type=action_type,
-            target_id=assignment.id,
+            target_id=assignment["id"],
             payload=json.dumps({
                 "status": new_status,
-                "note_id": assignment.note_id,
-                "user_id": assignment.user_id
+                "note_id": assignment["note_id"],
+                "user_id": assignment["user_id"]
             })
         )
         db.session.add(action_log)
         db.session.commit()
     
-    return assignment.to_dict()
+    return assignment
 
 @bp.get('/assignments/unread')
 @jwt_required()
@@ -300,12 +201,11 @@ def get_unread_assignments():
     """Récupérer les assignations non lues de l'utilisateur connecté (authentification requise)."""
     current_user_id = int(get_jwt_identity())
     
-    unread_assignments = Assignment.query.filter_by(
-        user_id=current_user_id,
-        is_read=False
-    ).order_by(Assignment.assigned_date.desc()).all()
+    # Utiliser le service
+    service = AssignmentService()
+    unread_assignments = service.get_unread_assignments(current_user_id)
     
     return {
         "count": len(unread_assignments),
-        "assignments": [a.to_dict() for a in unread_assignments]
+        "assignments": unread_assignments
     }

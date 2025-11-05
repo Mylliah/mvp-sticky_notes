@@ -34,18 +34,27 @@ class ContactService:
         
         # Contact spécial : soi-même
         contacts_list = [{
-            "id": None,
+            "id": user.id,
             "user_id": user.id,
             "contact_user_id": user.id,
-            "contact_user": user.to_dict(),
-            "is_mutual": True,  # Toujours True pour soi-même
-            "added_date": user.created_date.isoformat() if user.created_date else None
+            "username": user.username,
+            "email": user.email,
+            "nickname": "Moi",
+            "is_self": True,
+            "contact_action": None,
+            "created_date": None,
+            "is_mutual": True
         }]
         
         # Contacts réels
         contacts = self.contact_repo.find_by_user(user_id)
         for contact in contacts:
             contact_dict = contact.to_dict()
+            # Ajouter username et email du contact_user
+            if contact.contact_user:
+                contact_dict["username"] = contact.contact_user.username
+                contact_dict["email"] = contact.contact_user.email
+            contact_dict["is_self"] = False
             contacts_list.append(contact_dict)
         
         return contacts_list
@@ -91,13 +100,16 @@ class ContactService:
         
         return assignable
     
-    def create_contact(self, user_id: int, contact_user_id: int) -> Dict[str, Any]:
+    def create_contact(self, user_id: int, contact_username: str, 
+                      nickname: str, contact_action: str = None) -> Dict[str, Any]:
         """
         Créer un nouveau contact.
         
         Args:
             user_id: ID de l'utilisateur propriétaire
-            contact_user_id: ID de l'utilisateur à ajouter en contact
+            contact_username: Username de l'utilisateur à ajouter en contact
+            nickname: Surnom pour le contact
+            contact_action: Action associée (optionnel)
             
         Returns:
             Dictionnaire représentant le contact créé
@@ -106,23 +118,28 @@ class ContactService:
             400: Si tentative d'ajout de soi-même ou si contact existe déjà
             404: Si l'utilisateur contact n'existe pas
         """
+        # Vérifier que l'utilisateur contact existe (par username)
+        contact_user = self.user_repo.find_by_username(contact_username)
+        if not contact_user:
+            abort(404, description="User not found")
+        
+        contact_user_id = contact_user.id
+        
         # Vérifier qu'on n'essaie pas de s'ajouter soi-même
         if user_id == contact_user_id:
             abort(400, description="Cannot add yourself as contact")
-        
-        # Vérifier que l'utilisateur contact existe
-        contact_user = self.user_repo.find_by_id(contact_user_id)
-        if not contact_user:
-            abort(404, description="Contact user not found")
         
         # Vérifier que le contact n'existe pas déjà
         if self.contact_repo.exists(user_id, contact_user_id):
             abort(400, description="Contact already exists")
         
         # Créer le contact
+        from ..models import Contact
         contact = Contact(
             user_id=user_id,
-            contact_user_id=contact_user_id
+            contact_user_id=contact_user_id,
+            nickname=nickname,
+            contact_action=contact_action
         )
         
         contact = self.contact_repo.save(contact)
@@ -150,26 +167,27 @@ class ContactService:
         
         # Vérifier que l'utilisateur est le propriétaire
         if contact.user_id != user_id:
-            abort(403, description="Access denied")
+            abort(403, description="You can only view your own contacts")
         
         return contact.to_dict()
     
-    def update_contact(self, contact_id: int, user_id: int, contact_user_id: int) -> Dict[str, Any]:
+    def update_contact(self, contact_id: int, user_id: int, 
+                      nickname: str = None, contact_action: str = None) -> Dict[str, Any]:
         """
-        Mettre à jour un contact (changer l'utilisateur contact).
+        Mettre à jour un contact (modifier le nickname ou l'action).
         
         Args:
             contact_id: ID du contact à modifier
             user_id: ID de l'utilisateur propriétaire
-            contact_user_id: Nouvel ID de l'utilisateur contact
+            nickname: Nouveau nickname (optionnel)
+            contact_action: Nouvelle action (optionnel)
             
         Returns:
             Dictionnaire représentant le contact mis à jour
             
         Raises:
-            404: Si le contact ou l'utilisateur n'existe pas
+            404: Si le contact n'existe pas
             403: Si l'utilisateur n'est pas le propriétaire
-            400: Si données invalides
         """
         contact = self.contact_repo.find_by_id(contact_id)
         if not contact:
@@ -177,24 +195,15 @@ class ContactService:
         
         # Vérifier que l'utilisateur est le propriétaire
         if contact.user_id != user_id:
-            abort(403, description="Access denied")
+            abort(403, description="You can only update your own contacts")
         
-        # Vérifier qu'on n'essaie pas de s'ajouter soi-même
-        if user_id == contact_user_id:
-            abort(400, description="Cannot add yourself as contact")
+        # Mettre à jour les champs fournis
+        if nickname is not None:
+            contact.nickname = nickname
         
-        # Vérifier que le nouvel utilisateur contact existe
-        new_contact_user = self.user_repo.find_by_id(contact_user_id)
-        if not new_contact_user:
-            abort(404, description="Contact user not found")
+        if contact_action is not None:
+            contact.contact_action = contact_action
         
-        # Vérifier qu'il n'y a pas de doublon
-        if contact.contact_user_id != contact_user_id:
-            if self.contact_repo.exists(user_id, contact_user_id):
-                abort(400, description="Contact already exists with this user")
-        
-        # Mettre à jour
-        contact.contact_user_id = contact_user_id
         contact = self.contact_repo.save(contact)
         
         return contact.to_dict()
@@ -220,7 +229,7 @@ class ContactService:
         
         # Vérifier que l'utilisateur est le propriétaire
         if contact.user_id != user_id:
-            abort(403, description="Access denied")
+            abort(403, description="You can only delete your own contacts")
         
         contact_dict = contact.to_dict()
         self.contact_repo.delete(contact)

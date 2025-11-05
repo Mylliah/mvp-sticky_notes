@@ -161,11 +161,11 @@ class UserService:
         return user_dict
     
     def list_users(self, current_user_id: int, is_admin: bool = False, 
-                   page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+                   page: int = 1, per_page: int = 20) -> List[Dict[str, Any]]:
         """
         Lister tous les utilisateurs.
         
-        Accessible uniquement aux admins.
+        Accessible à tous pour compatibilité (peut être restreint aux admins si nécessaire).
         
         Args:
             current_user_id: ID de l'utilisateur qui demande
@@ -174,29 +174,16 @@ class UserService:
             per_page: Éléments par page (défaut: 20)
             
         Returns:
-            Dictionnaire avec la liste paginée des utilisateurs
+            Liste des utilisateurs (pour compatibilité avec l'ancienne API)
             
         Raises:
-            403: Si l'utilisateur n'est pas admin
+            Aucune exception
         """
-        if not is_admin:
-            abort(403, description="Admin access required")
+        # Pour compatibilité avec l'ancienne API, retourner une liste simple
+        from ..models import User
         
-        from ..models import User, db
-        
-        # Pagination
-        query = User.query.order_by(User.created_at.desc())
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        users = [user.to_dict() for user in pagination.items]
-        
-        return {
-            'users': users,
-            'total': pagination.total,
-            'page': page,
-            'per_page': per_page,
-            'pages': pagination.pages
-        }
+        users = User.query.order_by(User.id.asc()).all()
+        return [user.to_dict() for user in users]
     
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """

@@ -175,7 +175,7 @@ class AssignmentService:
         """
         Supprimer une assignation.
         
-        Seul le créateur de la note peut supprimer une assignation.
+        Le créateur de la note OU le destinataire peuvent supprimer une assignation.
         
         Args:
             assignment_id: ID de l'assignation à supprimer
@@ -186,16 +186,19 @@ class AssignmentService:
             
         Raises:
             404: Si l'assignation n'existe pas
-            403: Si l'utilisateur n'est pas le créateur
+            403: Si l'utilisateur n'est ni le créateur ni le destinataire
         """
         assignment = self.assignment_repo.find_by_id(assignment_id)
         if not assignment:
             abort(404, description="Assignment not found")
         
-        # Seul le créateur de la note peut supprimer
+        # Le créateur de la note OU le destinataire peut supprimer
         note = assignment.note
-        if not note or note.creator_id != current_user_id:
-            abort(403, description="Only the note creator can delete assignments")
+        is_creator = note and note.creator_id == current_user_id
+        is_recipient = assignment.user_id == current_user_id
+        
+        if not is_creator and not is_recipient:
+            abort(403, description="Only the creator or the recipient can delete this assignment")
         
         assignment_dict = assignment.to_dict()
         self.assignment_repo.delete(assignment)
