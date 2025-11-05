@@ -8,43 +8,43 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from ... import db
 from ...models import Note, Assignment, ActionLog
+from ...services.note_service import NoteService
 
 bp = Blueprint('notes', __name__)
+
+# Instancier le service
+note_service = NoteService()
 
 
 @bp.post('/notes')
 @jwt_required()
 def create_note():
-    """Créer une nouvelle note (requiert authentification)."""
+    """
+    Créer une nouvelle note (requiert authentification).
+    
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
     data = request.get_json()
-    if not data or not data.get("content"):
-        abort(400, description="Missing content")
-    
-    # Limiter la longueur du contenu à 5000 caractères
-    content = data["content"]
-    if len(content) > 5000:
-        abort(400, description="Content too long (max 5000 characters)")
-    
     current_user_id = int(get_jwt_identity())
-    note = Note(
-        content=content,
+    
+    # ✅ Délégation au service
+    note_dict = note_service.create_note(
+        content=data.get("content"),
         creator_id=current_user_id,
         important=data.get("important", False)
     )
-    db.session.add(note)
-    db.session.commit()
     
     # Log de création de note
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="note_created",
-        target_id=note.id,
-        payload=json.dumps({"important": note.important})
+        target_id=note_dict["id"],
+        payload=json.dumps({"important": note_dict["important"]})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return note.to_dict(), 201
+    return note_dict, 201
 
 
 @bp.route('/notes', methods=['GET'])
@@ -193,89 +193,16 @@ def get_notes():
 @bp.get('/notes/<int:note_id>')
 @jwt_required()
 def get_note(note_id):
-    """Récupérer une note par son ID avec infos contextuelles selon le rôle."""
+    """
+    Récupérer une note par son ID avec infos contextuelles selon le rôle.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
+    Cette route délègue toute la logique métier au NoteService.
+    """
     current_user_id = int(get_jwt_identity())
-    note = Note.query.get_or_404(note_id)
     
-    # Vérifier accès (créateur OU destinataire)
-    is_creator = note.creator_id == current_user_id
-    my_assignment = Assignment.query.filter_by(
-        note_id=note_id,
-        user_id=current_user_id
-    ).first()
-    
-    if not is_creator and not my_assignment:
-        abort(403, description="Access denied")
-    
-    # Auto-marquer comme lu si destinataire
-    if my_assignment and not my_assignment.is_read:
-        my_assignment.is_read = True
-        my_assignment.read_date = datetime.now(timezone.utc)
-        db.session.commit()
-    
-    # Construire la réponse de base
-    response = note.to_dict()
-    
-    if is_creator:
-        # CRÉATEUR : voir tous les destinataires et leurs statuts
-        all_assignments = Assignment.query.filter_by(note_id=note_id).all()
-        
-        # Infos de traçabilité de suppression (visible par CRÉATEUR uniquement)
-        if note.deleted_by:
-            from ...models import User
-            deleter = User.query.get(note.deleted_by)
-            response["deleted_by_username"] = deleter.username if deleter else None
-            response["deleted_by_id"] = note.deleted_by
-        
-        # Liste des usernames qui ont lu
-        response["read_by"] = [
-            a.user.username for a in all_assignments if a.is_read and a.user
-        ]
-        
-        # Liste de tous les destinataires
-        response["assigned_to"] = [
-            a.user.username for a in all_assignments if a.user
-        ]
-        
-        # Détails complets des assignations (visible par créateur)
-        response["assignments_details"] = [
-            {
-                "user_id": a.user_id,
-                "username": a.user.username if a.user else None,
-                "is_read": a.is_read,
-                "read_date": a.read_date.isoformat() if a.read_date else None,
-                "recipient_status": a.recipient_status,
-                "finished_date": a.finished_date.isoformat() if a.finished_date else None,
-                "assigned_date": a.assigned_date.isoformat()
-                # recipient_priority est PRIVÉ, pas inclus
-            }
-            for a in all_assignments
-        ]
-        
-    else:
-        # DESTINATAIRE : voir uniquement ses propres infos
-        response["my_assignment"] = {
-            "is_read": my_assignment.is_read,
-            "read_date": my_assignment.read_date.isoformat() if my_assignment.read_date else None,
-            "recipient_priority": my_assignment.recipient_priority,
-            "recipient_status": my_assignment.recipient_status,
-            "finished_date": my_assignment.finished_date.isoformat() if my_assignment.finished_date else None,
-            "assigned_date": my_assignment.assigned_date.isoformat()
-        }
-        
-        # Infos de traçabilité : le destinataire voit SEULEMENT si le CRÉATEUR a supprimé
-        # (signal que la tâche est terminée et qu'il peut faire le ménage aussi)
-        # Mais il ne voit PAS si un autre destinataire a supprimé (confidentialité)
-        if note.deleted_by and note.deleted_by == note.creator_id:
-            from ...models import User
-            deleter = User.query.get(note.deleted_by)
-            response["deleted_by_creator"] = True
-            response["deleted_by_username"] = deleter.username if deleter else None
-        
-        # Confidentialité : le destinataire ne voit pas les autres
-        response["assigned_to"] = None
-        response["read_by"] = None
-        response["assignments_details"] = None
+    # ✅ Délégation complète au service
+    response = note_service.get_note_for_user(note_id, current_user_id)
     
     return response
 
@@ -283,86 +210,61 @@ def get_note(note_id):
 @bp.get('/notes/<int:note_id>/details')
 @jwt_required()
 def get_note_details(note_id):
-    """Récupérer les détails d'une note sans contenu, pour survol ou audit côté front."""
-    note = Note.query.get_or_404(note_id)
+    """
+    Récupérer les détails d'une note sans contenu, pour survol ou audit côté front.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
     current_user_id = int(get_jwt_identity())
-    assignment = Assignment.query.filter_by(note_id=note_id, user_id=current_user_id).first()
-    return note.to_details_dict(assignment)
+    
+    # ✅ Délégation au service
+    return note_service.get_note_details(note_id, current_user_id)
 
 
 @bp.get('/notes/<int:note_id>/assignments')
 @jwt_required()
 def get_note_assignments(note_id):
-    """Récupérer tous les destinataires avec leur statut (créateur uniquement)."""
-    note = Note.query.get_or_404(note_id)
+    """
+    Récupérer tous les destinataires avec leur statut (créateur uniquement).
+    
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est bien le créateur
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can view all assignments")
-    
-    # Récupérer toutes les assignations
-    assignments = Assignment.query.filter_by(note_id=note_id).order_by(Assignment.assigned_date.desc()).all()
-    
-    return {
-        "note_id": note.id,
-        "creator_id": note.creator_id,
-        "total_recipients": len(assignments),
-        "read_count": sum(1 for a in assignments if a.is_read),
-        "completed_count": sum(1 for a in assignments if a.recipient_status == 'terminé'),
-        "assignments": [
-            {
-                "id": a.id,
-                "user_id": a.user_id,
-                "username": a.user.username if a.user else None,
-                "assigned_date": a.assigned_date.isoformat(),
-                "is_read": a.is_read,
-                "recipient_status": a.recipient_status,
-                "finished_date": a.finished_date.isoformat() if a.finished_date else None
-                # recipient_priority est PRIVÉ, le créateur ne le voit pas
-            }
-            for a in assignments
-        ]
-    }
+    # ✅ Délégation au service
+    return note_service.get_note_assignments(note_id, current_user_id)
 
 
 @bp.put('/notes/<int:note_id>')
 @jwt_required()
 def update_note(note_id):
-    """Mettre à jour une note (authentifié)."""
-    note = Note.query.get_or_404(note_id)
+    """
+    Mettre à jour une note (authentifié).
+    
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
+    data = request.get_json()
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est bien le créateur
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can update this note")
-    
-    data = request.get_json()
-    if not data or "content" not in data:
-        abort(400, description="Missing content")
-    
-    # Limiter la longueur du contenu à 5000 caractères
-    content = data["content"]
-    if len(content) > 5000:
-        abort(400, description="Content too long (max 5000 characters)")
-    
-    note.content = content
-    if "important" in data:
-        note.important = data["important"]
-    note.update_date = datetime.now(timezone.utc)
-    db.session.commit()
+    # ✅ Délégation au service
+    note_dict = note_service.update_note(
+        note_id=note_id,
+        user_id=current_user_id,
+        content=data.get("content"),
+        important=data.get("important")
+    )
     
     # Log de modification de note
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="note_updated",
-        target_id=note.id,
-        payload=json.dumps({"important": note.important})
+        target_id=note_dict["id"],
+        payload=json.dumps({"important": note_dict["important"]})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return note.to_dict()
+    return note_dict
 
 
 @bp.get('/notes/orphans')
@@ -371,26 +273,13 @@ def get_orphan_notes():
     """
     Récupérer les notes orphelines (sans aucune assignation active).
     Ces notes peuvent être supprimées définitivement par le créateur.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
     """
     current_user_id = int(get_jwt_identity())
     
-    # Récupérer toutes les notes créées par l'utilisateur (NON supprimées)
-    my_notes = Note.query.filter_by(
-        creator_id=current_user_id
-    ).filter(
-        Note.delete_date.is_(None)  # Exclure les notes déjà supprimées
-    ).all()
-    
-    orphan_notes = []
-    for note in my_notes:
-        # Vérifier si cette note a encore des assignations actives
-        active_assignments = Assignment.query.filter_by(note_id=note.id).count()
-        
-        if active_assignments == 0:
-            # Note sans assignation = note orpheline
-            note_dict = note.to_dict()
-            note_dict['is_orphan'] = True
-            orphan_notes.append(note_dict)
+    # ✅ Délégation au service
+    orphan_notes = note_service.get_orphan_notes(current_user_id)
     
     return {"notes": orphan_notes, "count": len(orphan_notes)}
 
@@ -401,36 +290,28 @@ def delete_note(note_id):
     """
     Soft delete : pose la date de suppression et enregistre qui a supprimé.
     Autorisé pour le créateur OU le destinataire de la note (traçabilité complète).
+    
+    ✅ REFACTORÉ : Architecture 3 couches
     """
-    note = Note.query.get_or_404(note_id)
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est créateur OU destinataire
-    is_creator = note.creator_id == current_user_id
-    is_recipient = Assignment.query.filter_by(
-        note_id=note_id,
-        user_id=current_user_id
-    ).first() is not None
+    # ✅ Délégation au service
+    note_dict = note_service.delete_note(note_id, current_user_id)
     
-    if not is_creator and not is_recipient:
-        abort(403, description="Only the creator or recipient can delete this note")
-    
-    # Soft delete avec traçabilité de QUI a supprimé
-    note.delete_date = datetime.now(timezone.utc)
-    note.deleted_by = current_user_id
-    db.session.commit()
+    # Vérifier si c'est le créateur pour le log
+    is_creator = note_dict["creator_id"] == current_user_id
     
     # Log de suppression de note
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="note_deleted",
-        target_id=note.id,
+        target_id=note_dict["id"],
         payload=json.dumps({"is_creator": is_creator})
     )
     db.session.add(action_log)
     db.session.commit()
     
-    return note.to_dict()
+    return note_dict
 
 
 @bp.get('/notes/<int:note_id>/deletion-history')
@@ -439,39 +320,13 @@ def get_deletion_history(note_id):
     """
     Récupérer l'historique des suppressions d'assignations pour une note.
     Accessible uniquement au créateur de la note.
-    """
-    from ...models import User
     
-    note = Note.query.get_or_404(note_id)
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est le créateur de la note
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can view deletion history")
-    
-    # Récupérer les logs de suppressions d'assignations pour cette note
-    deletion_logs = ActionLog.query.filter_by(
-        action_type="assignment_deleted"
-    ).all()
-    
-    # Filtrer ceux qui concernent cette note
-    deletions = []
-    for log in deletion_logs:
-        try:
-            payload = json.loads(log.payload)
-            if payload.get("note_id") == note_id:
-                # Récupérer le destinataire qui a supprimé
-                assigned_user_id = payload.get("assigned_user_id")
-                user = User.query.get(assigned_user_id)
-                
-                deletions.append({
-                    "user_id": assigned_user_id,
-                    "username": user.username if user else f"User #{assigned_user_id}",
-                    "deleted_date": log.timestamp.isoformat() if log.timestamp else None,
-                    "deleted_by": log.user_id,  # Qui a fait l'action (créateur ou destinataire)
-                })
-        except (json.JSONDecodeError, KeyError):
-            continue
+    # ✅ Délégation au service
+    deletions = note_service.get_deletion_history(note_id, current_user_id)
     
     return {"deletions": deletions}
 
@@ -483,52 +338,12 @@ def get_completion_history(note_id):
     Récupérer l'historique des completions d'assignations pour une note.
     Accessible uniquement au créateur de la note.
     Retourne uniquement les completions actives (celles qui n'ont pas été décochées).
-    """
-    from ...models import User
     
-    note = Note.query.get_or_404(note_id)
+    ✅ REFACTORÉ : Architecture 3 couches
+    """
     current_user_id = int(get_jwt_identity())
     
-    # Vérifier que l'utilisateur est le créateur de la note
-    if note.creator_id != current_user_id:
-        abort(403, description="Only the creator can view completion history")
-    
-    # Récupérer les logs de completions ET d'uncompletions pour cette note
-    completion_logs = ActionLog.query.filter(
-        ActionLog.action_type.in_(['assignment_completed', 'assignment_uncompleted'])
-    ).order_by(ActionLog.timestamp.desc()).all()
-    
-    # Filtrer ceux qui concernent cette note et déterminer l'état actuel de chaque assignation
-    completions_by_assignment = {}  # assignment_id -> dernier log
-    
-    for log in completion_logs:
-        try:
-            payload = json.loads(log.payload)
-            if payload.get("note_id") == note_id:
-                assignment_id = log.target_id
-                
-                # Garder seulement le log le plus récent pour chaque assignation
-                if assignment_id not in completions_by_assignment:
-                    completions_by_assignment[assignment_id] = log
-                elif log.timestamp > completions_by_assignment[assignment_id].timestamp:
-                    completions_by_assignment[assignment_id] = log
-        except (json.JSONDecodeError, KeyError):
-            continue
-    
-    # Construire la liste des completions actives (celles qui sont "completed" et pas "uncompleted")
-    completions = []
-    for assignment_id, log in completions_by_assignment.items():
-        if log.action_type == "assignment_completed":
-            payload = json.loads(log.payload)
-            user_id = payload.get("user_id")
-            user = User.query.get(user_id)
-            
-            completions.append({
-                "assignment_id": assignment_id,
-                "user_id": user_id,
-                "username": user.username if user else f"User #{user_id}",
-                "completed_date": log.timestamp.isoformat() if log.timestamp else None,
-                "completed_by": log.user_id,  # Normalement = user_id (le destinataire)
-            })
+    # ✅ Délégation au service
+    completions = note_service.get_completion_history(note_id, current_user_id)
     
     return {"completions": completions}

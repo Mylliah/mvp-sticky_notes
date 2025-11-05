@@ -8,8 +8,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
 from ... import db, limiter
 from ...models import User, ActionLog
+from ...services.auth_service import AuthService
 
 bp = Blueprint('auth', __name__)
+
+# Instancier le service
+auth_service = AuthService()
 
 
 @bp.post('/auth/register')
@@ -17,57 +21,33 @@ bp = Blueprint('auth', __name__)
 def register():
     """
     Endpoint pour créer un nouvel utilisateur.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
     """
     data = request.get_json()
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-
-    if not username or not email or not password:
-        abort(400, description="Missing username, email or password")
-
-    # Valider la longueur du mot de passe
-    if len(password) < 8:
-        abort(400, description="Password must be at least 8 characters long")
-
-    # Valider le format de l'email
-    try:
-        validation = validate_email(email, check_deliverability=False)
-        email = validation.normalized
-    except EmailNotValidError as e:
-        abort(400, description=f"Invalid email format: {str(e)}")
-
-    # Vérifie si username ou email existe déjà
-    if User.query.filter((User.username==username) | (User.email==email)).first():
-        abort(400, description="Username or email already exists")
-
-    # Crée l'utilisateur avec mot de passe haché
-    user = User(
-        username=username,
-        email=email,
-        password_hash=generate_password_hash(password)
+    
+    # ✅ Délégation au service
+    user_dict, access_token = auth_service.register_user(
+        username=data.get("username"),
+        email=data.get("email"),
+        password=data.get("password")
     )
-    db.session.add(user)
-    db.session.commit()
-
+    
     # Log de création d'utilisateur
     action_log = ActionLog(
-        user_id=user.id,
+        user_id=user_dict["id"],
         action_type="user_registered",
-        target_id=user.id,
-        payload=json.dumps({"username": username, "email": email})
+        target_id=user_dict["id"],
+        payload=json.dumps({"username": user_dict["username"], "email": user_dict["email"]})
     )
     db.session.add(action_log)
     db.session.commit()
 
-    # Génère un token JWT pour login automatique
-    access_token = create_access_token(identity=str(user.id))
-
     return {
         "msg": "User created successfully",
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
+        "id": user_dict["id"],
+        "username": user_dict["username"],
+        "email": user_dict["email"],
         "access_token": access_token
     }, 201
 
@@ -78,30 +58,20 @@ def login():
     """
     Endpoint pour authentifier l'utilisateur et générer un JWT.
     Accepte uniquement email + password.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
     """
     data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
-
-    if not email or not password:
-        abort(400, description="Missing email or password")
-
-    # Cherche par email uniquement
-    user = User.query.filter_by(email=email).first()
-
-    if not user or not check_password_hash(user.password_hash, password):
-        abort(401, description="Invalid credentials")
-
-    access_token = create_access_token(identity=str(user.id))
+    
+    # ✅ Délégation au service
+    access_token, user_dict = auth_service.login_user(
+        email=data.get("email"),
+        password=data.get("password")
+    )
 
     return {
         "access_token": access_token,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "role": user.role
-        }
+        "user": user_dict
     }
 
 
@@ -111,16 +81,15 @@ def get_me():
     """
     Endpoint pour récupérer le profil de l'utilisateur connecté.
     Utile pour vérifier la validité du token JWT.
+    
+    ✅ REFACTORÉ : Architecture 3 couches
     """
     current_user_id = int(get_jwt_identity())
-    user = User.query.get_or_404(current_user_id)
     
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "created_date": user.created_date.isoformat() if user.created_date else None
-    }, 200
+    # ✅ Délégation au service
+    user_dict = auth_service.get_current_user(current_user_id)
+    
+    return user_dict, 200
 
 
 @bp.post('/auth/logout')
