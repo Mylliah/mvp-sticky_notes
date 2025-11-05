@@ -32,6 +32,7 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
   const [recipientsText, setRecipientsText] = useState<string>('');
   const [isSelfAssigned, setIsSelfAssigned] = useState(false); // Pour distinguer "à Moi-même" des autres
   const [showAssignMenu, setShowAssignMenu] = useState(false);
+  const [myAssignmentDate, setMyAssignmentDate] = useState<string | null>(null); // Date d'assignation pour les destinataires
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   
@@ -99,6 +100,9 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
         
         setIsCompleted(myCompleted);
         setCompletionStatus(myCompleted ? 'full' : 'none'); // Ma coche = vert foncé
+        
+        // Stocker la date d'assignation pour l'affichage
+        setMyAssignmentDate(myAssignment.assigned_date);
       }
       
       setIsPriority(priority);
@@ -108,8 +112,9 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       setIsPriority(false);
       setIsNew(false);
       setCompletionStatus('none');
+      setMyAssignmentDate(null); // Pas d'assignation = pas de date d'assignation
     }
-  }, [note.id, currentUser, assignments, isMyNote]);
+  }, [note, currentUser, assignments, isMyNote]);
 
   // Charger le nom du créateur et des destinataires
   useEffect(() => {
@@ -403,8 +408,13 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
         </div>
       )}
 
-      {/* Date de création en bas à droite */}
-      <span className="note-date">créé le {formatDate(note.created_date)}</span>
+      {/* Date en bas à droite : "créé le" pour le créateur, "assignée le" pour le destinataire */}
+      <span className="note-date">
+        {!isMyNote && myAssignmentDate 
+          ? `assignée le ${formatDate(myAssignmentDate)}`
+          : `créée le ${formatDate(note.created_date)}`
+        }
+      </span>
     </div>
   );
 }
