@@ -1,6 +1,7 @@
 services:
   # API Flask
   backend:
+    command: ["./wait-for-db.sh", "flask", "run", "--host=0.0.0.0"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -19,6 +20,8 @@ services:
       db:
         condition: service_healthy
     user: "${UID:-1000}:${GID:-1000}"
+    networks:
+      - appnet
 
   # Frontend React + Vite
   frontend:
@@ -29,13 +32,15 @@ services:
       - ./frontend:/app          # Monte le code pour hot-reload
       - /app/node_modules        # Protège node_modules
     ports:
-      - "3001:3000"  # Port 3001 (3000 a un bug avec docker-compose)
+      - "3000:3000"  # Port 3001 (3000 a un bug avec docker-compose)
     environment:
-      - NODE_ENV=development
+      NODE_ENV: development
     depends_on:
       - backend
     stdin_open: true  # Nécessaire pour Vite
     tty: true
+    networks:
+      - appnet
 
   # DB PostgreSQL
   db:
@@ -53,6 +58,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - appnet
 
   # Console web pour la DB (option pratique)
   adminer:
@@ -61,6 +68,11 @@ services:
       - db
     ports:
       - "8080:8080"
+    networks:
+      - appnet
 
 volumes:
   dbdata:
+
+networks:
+  appnet:

@@ -1,8 +1,8 @@
-"""Initial migration with all models
+"""Initial schema
 
-Revision ID: a7aed4065097
+Revision ID: d67165e12976
 Revises: 
-Create Date: 2025-10-10 11:35:13.570630
+Create Date: 2025-11-06 13:35:23.814367
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a7aed4065097'
+revision = 'd67165e12976'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,20 +22,21 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=80), nullable=False),
     sa.Column('email', sa.String(length=120), nullable=False),
-    sa.Column('password_hash', sa.String(length=128), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('password_hash', sa.String(length=255), nullable=False),
+    sa.Column('role', sa.String(length=20), nullable=False),
+    sa.Column('created_date', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')
     )
     op.create_table('action_logs',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('target_id', sa.Integer(), nullable=False),
     sa.Column('action_type', sa.String(length=80), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=False),
     sa.Column('payload', sa.String(length=255), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('contacts',
@@ -47,19 +48,20 @@ def upgrade():
     sa.Column('created_date', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['contact_user_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'contact_user_id', name='uq_user_contact')
     )
     op.create_table('notes',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('creator_id', sa.Integer(), nullable=True),
+    sa.Column('creator_id', sa.Integer(), nullable=False),
     sa.Column('created_date', sa.DateTime(), nullable=False),
     sa.Column('update_date', sa.DateTime(), nullable=True),
     sa.Column('delete_date', sa.DateTime(), nullable=True),
-    sa.Column('read_date', sa.DateTime(), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('deleted_by', sa.Integer(), nullable=True),
     sa.Column('important', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['creator_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['deleted_by'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('assignments',
@@ -68,9 +70,14 @@ def upgrade():
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('assigned_date', sa.DateTime(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=True),
+    sa.Column('read_date', sa.DateTime(), nullable=True),
+    sa.Column('recipient_priority', sa.Boolean(), nullable=True),
+    sa.Column('recipient_status', sa.String(length=20), nullable=False),
+    sa.Column('finished_date', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['note_id'], ['notes.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('note_id', 'user_id', name='uq_note_user')
     )
     # ### end Alembic commands ###
 
