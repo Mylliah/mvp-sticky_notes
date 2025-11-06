@@ -289,11 +289,16 @@ class NoteService:
         Raises:
             404: Si la note n'existe pas
             403: Si l'utilisateur n'a pas accès à la note
+            400: Si la note est déjà supprimée
         """
         # Récupérer la note
         note = self.note_repo.find_by_id(note_id)
         if not note:
             abort(404, description="Note not found")
+        
+        # Vérifier si la note est déjà supprimée
+        if note.delete_date is not None:
+            abort(400, description="Note already deleted")
         
         # Vérifier que l'utilisateur est créateur OU destinataire
         is_creator = note.creator_id == user_id
