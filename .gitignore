@@ -15,6 +15,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 coverage.xml
+coverage/
 htmlcov/
 
 # --- Node / Frontend (Vite) ---
@@ -35,3 +36,6 @@ yarn-error.log*
 
 # --- Docker / divers ---
 backup.sql
+
+# Documentation locale (ne pas versionner)
+docs/
