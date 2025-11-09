@@ -26,8 +26,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./frontend:/app          # Monte le code pour hot-reload
-      - /app/node_modules        # Protège node_modules
+      - ./frontend:/app                       # Monte le code pour hot-reload
+      - node_modules:/app/node_modules        # Protège node_modules
     ports:
       - "3001:3000"  # Port 3001 (3000 a un bug avec docker-compose)
     environment:
@@ -65,3 +65,4 @@ services:
 
 volumes:
   dbdata:
+  node_modules:
