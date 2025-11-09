@@ -184,10 +184,79 @@
 
 .aboutSection p {
   max-width: 800px;
-  margin: 0 auto;
+  margin: 0 auto 1.5rem;
   font-size: 1.1rem;
   line-height: 1.8;
   color: #555;
+}
+
+.authorSection {
+  background-color: var(--background-color);
+  width: 100%;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.authorTitle {
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text-color-dark);
+}
+
+.authorDescription {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #555;
+}
+
+.authorLinks {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.authorLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.8rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color-light);
+  background-color: var(--primary-color);
+  border-radius: 50px;
+  text-decoration: none;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.authorLink:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.linkedinLink {
+  background-color: #0077b5;
+}
+
+.linkedinLink:hover {
+  background-color: #005582;
+}
+
+.githubLink {
+  background-color: #333;
+}
+
+.githubLink:hover {
+  background-color: #24292e;
+}
+
+.linkIcon {
+  font-size: 1.2rem;
 }
 
 .footer {

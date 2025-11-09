@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
+import welcomeVideo from '../assets/Welcome_to_sticky-notes.mp4';
 
 const LandingPage: React.FC = () => {
   return (
@@ -42,7 +43,8 @@ const LandingPage: React.FC = () => {
         <h2 className="videoTitle">Démonstration de la plateforme</h2>
         <div className="videoWrapper">
           <video controls width="100%">
-            <p>Votre navigateur ne supporte pas la lecture de vidéos. Voici un lien pour la <a href="#">télécharger</a>.</p>
+            <source src={welcomeVideo} type="video/mp4" />
+            Votre navigateur ne supporte pas la balise vidéo.
           </video>
         </div>
       </section>
@@ -50,10 +52,43 @@ const LandingPage: React.FC = () => {
       <section className="aboutSection">
         <h2 className="aboutTitle">À Propos de T-Note</h2>
         <p>
-          T-Note est né d'un besoin simple : centraliser les idées éparpillées et faciliter la collaboration.
-          Dans un monde où les informations fusent, nous avons voulu créer un havre de paix numérique pour vos pensées,
-          un endroit où la simplicité d'un post-it rencontre la puissance du cloud pour que vous ne perdiez plus jamais une idée.
+          T-Note est né d'une frustration réelle : une directrice d'agence, débordée par la complexité 
+          des outils de prise de notes existants sur internet, rêvait d'une solution aussi simple qu'un 
+          post-it papier, mais avec la puissance du numérique. Trop de fonctionnalités inutiles, 
+          trop de menus cachés, trop de temps perdu à chercher comment faire quelque chose de basique.
         </p>
+        <p>
+          Nous avons alors créé T-Note : un outil qui va droit à l'essentiel. Pas de courbe d'apprentissage, 
+          pas de manuel de 50 pages. Juste vos idées, vos notes, accessibles en un clic. Simple, intuitif, 
+          efficace. Parce qu'une bonne application ne devrait jamais être plus compliquée que le problème 
+          qu'elle résout.
+        </p>
+      </section>
+
+      <section className="authorSection">
+        <h2 className="authorTitle">L'Auteur</h2>
+        <p className="authorDescription">
+          Projet développé par <strong>Mylliah</strong>, développeur passionné par la création d'outils 
+          simples et efficaces pour améliorer la productivité au quotidien.
+        </p>
+        <div className="authorLinks">
+          <a 
+            href="https://www.linkedin.com/in/myriam-mezhoud" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="authorLink linkedinLink"
+          >
+            <span className="linkIcon">💼</span> LinkedIn
+          </a>
+          <a 
+            href="https://github.com/Mylliah" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="authorLink githubLink"
+          >
+            <span className="linkIcon">💻</span> GitHub
+          </a>
+        </div>
       </section>
 
       <footer className="footer">
