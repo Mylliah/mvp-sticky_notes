@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => {
         </p>
         <div className="authorLinks">
           <a 
-            href="https://www.linkedin.com/in/myriam-mezhoud" 
+            href="https://www.linkedin.com/in/myriam-mezhoud-aa01a2358/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="authorLink linkedinLink"
