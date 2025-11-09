@@ -38,6 +38,9 @@ yarn-error.log*
 # --- Docker / divers ---
 backup.sql
 
+# --- Scripts de déploiement (optionnel) ---
+deploy.sh
+
 # --- Documentation (ignorée car non versionnée) ---
 docs/
 
