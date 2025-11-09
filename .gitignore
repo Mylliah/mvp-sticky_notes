@@ -1,0 +1,83 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editors/IDE ---
+.vscode/
+.idea/
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+backend/htmlcov/
+
+# --- Node / Frontend (Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# --- Env & secrets ---
+*.env
+!backend/.env.example
+!frontend/.env.example
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Docker / divers ---
+backup.sql
+
+# --- Documentation (ignorée car non versionnée) ---
+docs/
+
+# --- Fichiers markdown en double à la racine (garder uniquement README.md) ---
+AMELIORATIONS_TASKS_0-3.md
+ANALYSE_CODE_REEL.md
+ANALYSE_FONCTIONNALITES.md
+ARCHITECTURE_3_LAYERS.md
+ARCHITECTURE_3_LAYERS_COMPLETE.md
+ARCHITECTURE_ANALYSE.md
+AUDIT_COMPLET.md
+BILAN_FINAL_FRONTEND.md
+BUGFIX_ASSIGNATION.md
+BUGS_VULNERABILITES.md
+CE_QUI_RESTE.md
+COMPLETION_FRONTEND_100POURCENT.md
+COMPLETION_RAPPORT_STAGE4.md
+CONFORMITE_RAPPORT_STAGE3.md
+CONFORMITE_RAPPORT_STAGE4.md
+CORRECTIONS_APPLIQUEES.md
+CURL_COMMANDS.md
+FRONTEND_TODO.md
+GUIDE_TEST_ASSIGNATION.md
+IMPLEMENTATION_COMPLETE.md
+INDEX.md
+METRIQUES_REELLES.md
+PLAN_RAPPORT_STAGE_4.md
+POSTMAN_TEST_PLAN.md
+RAPPORT*.md
+README.old*.md
+README_.md
+README__.md
+RESUME_IMPLEMENTATION_FINALE.md
+RETROSPECTIVE_PAR_ROLE.md
+SCORE_MOSCOW_FINAL.md
+SEED_README.md
+STRUCTURE_FRONTEND.md
+TABLEAUX_DE_BORD.md
+TABLEAU_DE_BORD.md
+VERIFICATION_METRIQUES.md
+
+# --- Fichiers de test temporaires ---
+test_results_*.txt

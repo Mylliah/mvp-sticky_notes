@@ -1,0 +1,280 @@
+.contact-badges-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px; /* Correspond au margin-right de main-content */
+  background: white;
+  border-left: 1px solid #e0e0e0;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+body.dark-mode .contact-badges-container {
+  background: #1e1e1e;
+  border-left-color: #444;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.contact-badges-container.closed {
+  transform: translateX(100%);
+}
+
+.contact-badges-container.open {
+  transform: translateX(0);
+}
+
+.contact-badges-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.contact-badges-header .toggle-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.contact-badges-header .toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.contact-badges-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Message d'aide pour le drag & drop */
+.drag-drop-hint {
+  background: linear-gradient(135deg, #f0f1f9 0%, #f8f4fa 100%);
+  padding: 12px 16px;
+  margin: 16px 16px 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #5c6bc0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  animation: slideIn 0.3s ease;
+}
+
+.drag-drop-hint span {
+  flex: 1;
+  line-height: 1.4;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contact-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.contact-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 12px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.contact-badge:hover {
+  background-color: #f5f5f5;
+}
+
+body.dark-mode .contact-badge:hover {
+  background-color: #2a2a2a;
+}
+
+.contact-badge.selected {
+  background-color: #d1d5f0;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(92, 107, 192, 0.3);
+}
+
+body.dark-mode .contact-badge.selected {
+  background-color: #2d3a5c;
+}
+
+.contact-badge.selected .contact-avatar {
+  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.4);
+}
+
+.contact-badge.selected .contact-name {
+  color: #5c6bc0;
+  font-weight: 600;
+}
+
+.contact-badge.drag-over {
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  animation: dragOverPulse 1s ease-in-out infinite;
+}
+
+/* Animation de pulsation pendant le drag-over */
+@keyframes dragOverPulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.5);
+  }
+}
+
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  border: 3px solid transparent;
+  flex-shrink: 0;
+}
+
+.contact-badge.me .contact-avatar {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.contact-badge.drag-over .contact-avatar {
+  border-color: #1976d2;
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.4);
+}
+
+.contact-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  text-align: left;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.dark-mode .contact-name {
+  color: #d0d0d0;
+}
+
+.contact-badge.me .contact-name {
+  color: #2196f3;
+  font-weight: 600;
+}
+
+body.dark-mode .contact-badge.me .contact-name {
+  color: #4fc3f7;
+  font-weight: 600;
+}
+
+/* Badge de notification (nombre de notes non lues) */
+.contact-badge-notification {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: #ff5722;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation d'ajout d'assignation */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.contact-badge.assigned {
+  animation: pulse 0.5s ease;
+}
+
+/* Scrollbar personnalisée */
+.contact-badges::-webkit-scrollbar {
+  width: 6px;
+}
+
+.contact-badges::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.contact-badges::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.contact-badges::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contact-badges-container {
+    width: 180px;
+  }
+
+  .contact-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .contact-name {
+    font-size: 13px;
+  }
+}
