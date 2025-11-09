@@ -1,52 +1,60 @@
-import { useState, useEffect } from 'react'
-import NotesPage from './NotesPage'
-import LoginPage from './components/LoginPage'
-import RegisterPage from './components/RegisterPage'
-import { authService } from './services/auth.service'
-import './App.css'
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import NotesPage from './NotesPage';
+import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
+import LandingPage from './components/LandingPage';
+import { authService } from './services/auth.service';
+import './App.css';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showRegister, setShowRegister] = useState(false)
+const HomeRedirect = () => {
+  const isAuthenticated = authService.isAuthenticated();
+  return isAuthenticated ? <Navigate to="/notes" replace /> : <LandingPage />;
+};
 
-  useEffect(() => {
-    // Vérifier si l'utilisateur est déjà connecté
-    setIsAuthenticated(authService.isAuthenticated())
-  }, [])
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true)
-    setShowRegister(false)
-  }
-
-  const handleRegisterSuccess = () => {
-    setIsAuthenticated(true)
-    setShowRegister(false)
-  }
-
-  const handleLogout = () => {
-    authService.logout()
-    setIsAuthenticated(false)
-  }
-
-  if (!isAuthenticated) {
-    if (showRegister) {
-      return (
-        <RegisterPage 
-          onRegisterSuccess={handleRegisterSuccess}
-          onSwitchToLogin={() => setShowRegister(false)}
+const App = () => {
+  return (
+      <Routes>
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route 
+          path="/notes" 
+          element={
+            <ProtectedRoute>
+              <Notes />
+            </ProtectedRoute>
+          } 
         />
-      )
-    }
-    return (
-      <LoginPage 
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToRegister={() => setShowRegister(true)}
-      />
-    )
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+  );
+};
+
+const Login = () => {
+  const navigate = useNavigate();
+  return <LoginPage onLoginSuccess={() => navigate('/notes')} onSwitchToRegister={() => navigate('/register')} />;
+};
+
+const Register = () => {
+  const navigate = useNavigate();
+  return <RegisterPage onRegisterSuccess={() => navigate('/notes')} onSwitchToLogin={() => navigate('/login')} />;
+};
+
+const Notes = () => {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/login');
+  };
+  return <NotesPage onLogout={handleLogout} />;
+};
+
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
+  return children;
+};
 
-  return <NotesPage onLogout={handleLogout} />
-}
-
-export default App
+export default App;
