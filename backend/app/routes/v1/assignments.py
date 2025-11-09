@@ -116,16 +116,26 @@ def delete_assignment(assignment_id):
     """Supprimer une assignation (authentification requise)."""
     current_user_id = int(get_jwt_identity())
     
+    # Récupérer l'assignation AVANT de la supprimer pour garder l'info "était terminée"
+    assignment_obj = Assignment.query.get_or_404(assignment_id)
+    was_completed = assignment_obj.recipient_status == 'terminé'
+    finished_date = assignment_obj.finished_date.isoformat() if assignment_obj.finished_date else None
+    
     # Utiliser le service
     service = AssignmentService()
     assignment = service.delete_assignment(assignment_id, current_user_id)
     
-    # Log de suppression d'assignation
+    # Log de suppression d'assignation avec info de completion
     action_log = ActionLog(
         user_id=current_user_id,
         action_type="assignment_deleted",
         target_id=assignment_id,
-        payload=json.dumps({"note_id": assignment["note_id"], "assigned_user_id": assignment["user_id"]})
+        payload=json.dumps({
+            "note_id": assignment["note_id"],
+            "assigned_user_id": assignment["user_id"],
+            "was_completed": was_completed,
+            "completed_date": finished_date
+        })
     )
     db.session.add(action_log)
     db.session.commit()

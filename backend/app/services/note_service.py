@@ -531,4 +531,31 @@ class NoteService:
                     "completed_by": log.user_id,
                 })
         
+        # AJOUT : Aussi inclure les assignations supprimées qui étaient terminées
+        # Récupérer les logs de suppressions
+        deletion_logs = ActionLog.query.filter_by(
+            action_type="assignment_deleted"
+        ).all()
+        
+        for log in deletion_logs:
+            try:
+                payload = json.loads(log.payload)
+                if payload.get("note_id") == note_id and payload.get("was_completed"):
+                    # Cette assignation était terminée quand elle a été supprimée
+                    assigned_user_id = payload.get("assigned_user_id")
+                    user = self.user_repo.find_by_id(assigned_user_id)
+                    
+                    # Vérifier si on ne l'a pas déjà ajoutée (assignation toujours active)
+                    if not any(c["user_id"] == assigned_user_id for c in completions):
+                        completions.append({
+                            "assignment_id": None,  # L'assignation n'existe plus
+                            "user_id": assigned_user_id,
+                            "username": user.username if user else f"User #{assigned_user_id}",
+                            "completed_date": payload.get("completed_date"),  # Date de completion depuis le log
+                            "completed_by": assigned_user_id,
+                            "was_deleted": True,  # Indication que c'était une assignation supprimée
+                        })
+            except (json.JSONDecodeError, KeyError):
+                continue
+        
         return completions

@@ -44,7 +44,7 @@ class Note(db.Model):
             "creator_id": self.creator_id,
             "creator_username": self.creator.username if self.creator else f"User #{self.creator_id}",
             "deleted_by": self.deleted_by,
-            "deleted_by_username": self.deleter.username if self.deleter else (f"User #{self.deleted_by}" if self.deleted_by else None),
+            # deleted_by_username est ajouté seulement pour le créateur dans le service
         }
 
     def to_details_dict(self, assignment=None):
