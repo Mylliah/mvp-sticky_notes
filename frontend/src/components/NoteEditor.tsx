@@ -2,12 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { noteService } from '../services/note.service';
 import { assignmentService } from '../services/assignment.service';
 import { authService } from '../services/auth.service';
-import { userService } from '../services/user.service';
 import { handleAuthError, setEmergencySaveCallback } from '../utils/auth-redirect';
 import { saveDraft, loadDraft, clearDraft, getDraftAge } from '../utils/draft-storage';
 import { Note } from '../types/note.types';
 import { Assignment } from '../types/assignment.types';
-import { User } from '../types/auth.types';
 import './NoteEditor.css';
 
 interface NoteEditorProps {
@@ -27,7 +25,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   
   // Timer pour l'auto-sauvegarde
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
   
   // Gestion de l'assignation si l'utilisateur est destinataire
   const [myAssignment, setMyAssignment] = useState<Assignment | null>(null);
@@ -35,18 +33,17 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   const currentUser = authService.getCurrentUser();
 
   // État local pour la note mise à jour (pour afficher les infos à jour)
-  const [currentNote, setCurrentNote] = useState<Note | undefined>(note);
+  const [currentNote, setCurrentNote] = useState<Note | undefined>(note || undefined);
 
   // Gestion du panel d'informations
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
-  const [usersMap, setUsersMap] = useState<Map<number, User>>(new Map());
-  const [creatorName, setCreatorName] = useState<string>('');
   const [deletionHistory, setDeletionHistory] = useState<Array<{
     user_id: number;
     username: string;
     deleted_date: string;
     deleted_by: number;
+    deleted_by_username?: string;
   }>>([]);
   const [completionHistory, setCompletionHistory] = useState<Array<{
     assignment_id: number;
@@ -120,8 +117,10 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
   }, [content, important, note?.id]);
 
   // Charger l'historique des suppressions et completions quand le panel d'info s'ouvre
+  // + recharger les assignations pour voir les mises à jour de statut
   useEffect(() => {
     if (showInfoPanel && note) {
+      loadMyAssignment(); // Recharger les assignations pour voir les changements de statut
       loadDeletionHistory();
       loadCompletionHistory();
     }
@@ -162,33 +161,8 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       console.log('👤 Current user ID:', currentUser.id);
       
       // Stocker toutes les assignations pour le panel d'info
+      // Les assignations contiennent déjà les username grâce au backend
       setAllAssignments(assignments);
-      
-      // Charger les noms d'utilisateurs pour toutes les assignations
-      const userIds = assignments.map(a => a.user_id);
-      if (userIds.length > 0) {
-        try {
-          const users = await userService.getUsers(userIds);
-          setUsersMap(users);
-        } catch (err) {
-          console.error('Error loading users:', err);
-          if (handleAuthError(err)) {
-            return; // Redirection en cours
-          }
-        }
-      }
-      
-      // Charger le nom du créateur
-      try {
-        const creator = await userService.getUser(note.creator_id);
-        setCreatorName(creator.username);
-      } catch (err) {
-        console.error('Error loading creator:', err);
-        if (handleAuthError(err)) {
-          return; // Redirection en cours
-        }
-        setCreatorName(`Utilisateur #${note.creator_id}`);
-      }
       
       const mine = assignments.find(a => {
         console.log('  🔎 Checking assignment:', a.user_id, '=== ', currentUser.id, '?', a.user_id === currentUser.id);
@@ -243,29 +217,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       const data = await response.json();
       setDeletionHistory(data.deletions || []);
       console.log('📜 Historique des suppressions chargé:', data.deletions);
-      
-      // Charger les utilisateurs manquants dans la map (deleted_by et user_id)
-      if (data.deletions && data.deletions.length > 0) {
-        const userIdsToLoad = new Set<number>();
-        data.deletions.forEach((deletion: any) => {
-          if (!usersMap.has(deletion.deleted_by)) {
-            userIdsToLoad.add(deletion.deleted_by);
-          }
-          if (!usersMap.has(deletion.user_id)) {
-            userIdsToLoad.add(deletion.user_id);
-          }
-        });
-        
-        if (userIdsToLoad.size > 0) {
-          try {
-            const newUsers = await userService.getUsers(Array.from(userIdsToLoad));
-            // Fusionner avec la map existante
-            setUsersMap(new Map([...usersMap, ...newUsers]));
-          } catch (err) {
-            console.error('Error loading deletion users:', err);
-          }
-        }
-      }
+      // Les username sont déjà fournis par le backend
     } catch (err) {
       console.error('❌ Error loading deletion history:', err);
       if (handleAuthError(err)) {
@@ -298,26 +250,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       const data = await response.json();
       setCompletionHistory(data.completions || []);
       console.log('✅ Historique des completions chargé:', data.completions);
-      
-      // Charger les utilisateurs manquants dans la map
-      if (data.completions && data.completions.length > 0) {
-        const userIdsToLoad = new Set<number>();
-        data.completions.forEach((completion: any) => {
-          if (!usersMap.has(completion.user_id)) {
-            userIdsToLoad.add(completion.user_id);
-          }
-        });
-        
-        if (userIdsToLoad.size > 0) {
-          try {
-            const newUsers = await userService.getUsers(Array.from(userIdsToLoad));
-            // Fusionner avec la map existante
-            setUsersMap(new Map([...usersMap, ...newUsers]));
-          } catch (err) {
-            console.error('Error loading completion users:', err);
-          }
-        }
-      }
+      // Les username sont déjà fournis par le backend
     } catch (err) {
       console.error('❌ Error loading completion history:', err);
       if (handleAuthError(err)) {
@@ -385,6 +318,11 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
       // Recharger l'historique des completions pour le créateur
       if (currentUser && note && note.creator_id === currentUser.id) {
         loadCompletionHistory();
+      }
+      
+      // Notifier le parent pour qu'il recharge les assignations (pour mettre à jour la vignette)
+      if (note && onNoteCreated) {
+        onNoteCreated(note, false); // false = pas une nouvelle note
       }
       
       console.log('✅ Statut mis à jour:', newStatus);
@@ -665,7 +603,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Écrivez votre note ici..."
-          disabled={isLoading || (note && currentUser && note.creator_id !== currentUser.id)}
+          disabled={isLoading || !!(note && currentUser && note.creator_id !== currentUser.id)}
           maxLength={5000}
           autoFocus
         />
@@ -726,12 +664,12 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
             )}
 
             <div className="info-section">
-              <strong>Créateur :</strong> {creatorName || `Utilisateur #${currentNote.creator_id}`}
+              <strong>Créateur :</strong> {currentNote.creator_username || `Utilisateur #${currentNote.creator_id}`}
             </div>
 
             {currentNote.deleted_by && (
               <div className="info-section deleted-info">
-                <strong>🗑️ Supprimé par :</strong> {usersMap.get(currentNote.deleted_by)?.username || `Utilisateur #${currentNote.deleted_by}`}
+                <strong>🗑️ Supprimé par :</strong> {currentNote.deleted_by_username || `Utilisateur #${currentNote.deleted_by}`}
                 {currentNote.delete_date && (
                   <span className="delete-date">
                     {' '}le {new Date(currentNote.delete_date).toLocaleDateString('fr-FR')} à {new Date(currentNote.delete_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -759,8 +697,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                       return assignment.user_id === currentUser?.id;
                     })
                     .map(assignment => {
-                    const assignedUser = usersMap.get(assignment.user_id);
-                    const userName = assignedUser?.username || `Utilisateur #${assignment.user_id}`;
+                    const userName = assignment.username || `Utilisateur #${assignment.user_id}`;
                     const isMe = assignment.user_id === currentUser?.id;
                     
                     return (
@@ -849,14 +786,10 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                 <strong>Suppressions ({deletionHistory.length}) :</strong>
                 <div className="deletions-list">
                   {deletionHistory.map((deletion, index) => {
-                    // Déterminer qui a supprimé : le créateur ou le destinataire
-                    const deletedByUser = usersMap.get(deletion.deleted_by);
-                    const deletedByName = deletedByUser?.username || 
+                    // Utiliser les username fournis directement par le backend
+                    const deletedByName = deletion.deleted_by_username || 
                       (deletion.deleted_by === currentUser.id ? 'Vous' : `Utilisateur #${deletion.deleted_by}`);
-                    
-                    // Récupérer le destinataire de l'assignation
-                    const recipientUser = usersMap.get(deletion.user_id);
-                    const recipientName = recipientUser?.username || deletion.username || `Utilisateur #${deletion.user_id}`;
+                    const recipientName = deletion.username || `Utilisateur #${deletion.user_id}`;
                     
                     // Message différent si le destinataire supprime sa propre assignation ou si le créateur la supprime
                     const isSelfDeletion = deletion.deleted_by === deletion.user_id;

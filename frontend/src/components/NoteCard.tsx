@@ -123,15 +123,20 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       if (isMyNote) {
         setCreatorName('Moi');
       } else {
-        try {
-          const creator = await userService.getUser(note.creator_id);
-          setCreatorName(creator.username);
-        } catch (err) {
-          console.error(`[NoteCard ${note.id}] ❌ Error loading creator name:`, err);
-          if (handleAuthError(err)) {
-            return; // Redirection en cours
+        // Utiliser creator_username fourni par le backend si disponible
+        if (note.creator_username) {
+          setCreatorName(note.creator_username);
+        } else {
+          try {
+            const creator = await userService.getUser(note.creator_id);
+            setCreatorName(creator.username);
+          } catch (err) {
+            console.error(`[NoteCard ${note.id}] ❌ Error loading creator name:`, err);
+            if (handleAuthError(err)) {
+              return; // Redirection en cours
+            }
+            setCreatorName(`Utilisateur #${note.creator_id}`);
           }
-          setCreatorName(`Utilisateur #${note.creator_id}`);
         }
       }
 

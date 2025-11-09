@@ -36,6 +36,7 @@ class Assignment(db.Model):
             "id": self.id,
             "note_id": self.note_id,
             "user_id": self.user_id,
+            "username": self.user.username if self.user else f"User #{self.user_id}",
             "assigned_date": self.assigned_date.isoformat() if self.assigned_date else None,
             "is_read": self.is_read,
             "read_date": self.read_date.isoformat() if self.read_date else None,

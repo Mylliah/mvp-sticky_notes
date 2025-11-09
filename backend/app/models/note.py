@@ -42,6 +42,9 @@ class Note(db.Model):
             "update_date": self.update_date.isoformat() if self.update_date else None,
             "delete_date": self.delete_date.isoformat() if self.delete_date else None,
             "creator_id": self.creator_id,
+            "creator_username": self.creator.username if self.creator else f"User #{self.creator_id}",
+            "deleted_by": self.deleted_by,
+            "deleted_by_username": self.deleter.username if self.deleter else (f"User #{self.deleted_by}" if self.deleted_by else None),
         }
 
     def to_details_dict(self, assignment=None):

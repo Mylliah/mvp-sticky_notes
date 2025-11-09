@@ -450,12 +450,14 @@ class NoteService:
                 if payload.get("note_id") == note_id:
                     assigned_user_id = payload.get("assigned_user_id")
                     user = self.user_repo.find_by_id(assigned_user_id)
+                    deleted_by_user = self.user_repo.find_by_id(log.user_id)
                     
                     deletions.append({
                         "user_id": assigned_user_id,
                         "username": user.username if user else f"User #{assigned_user_id}",
                         "deleted_date": log.timestamp.isoformat() if log.timestamp else None,
                         "deleted_by": log.user_id,
+                        "deleted_by_username": deleted_by_user.username if deleted_by_user else f"User #{log.user_id}",
                     })
             except (json.JSONDecodeError, KeyError):
                 continue

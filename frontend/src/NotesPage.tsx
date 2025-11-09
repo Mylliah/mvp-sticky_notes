@@ -393,7 +393,15 @@ export default function NotesPage({ onLogout }: NotesPageProps) {
       setNotes((prevNotes: Note[]) => 
         prevNotes.map((n: Note) => (n.id === savedNote.id ? savedNote : n))
       );
-      // Les assignations n'ont pas changé, pas besoin de les recharger
+      
+      // Recharger les assignations car le statut a peut-être changé
+      console.log('[NotesPage] Reloading assignments for updated note:', savedNote.id);
+      const assignments = await assignmentService.getAssignments({ note_id: savedNote.id });
+      setAssignmentsMap((prev: Map<number, Assignment[]>) => {
+        const newMap = new Map(prev);
+        newMap.set(savedNote.id, assignments);
+        return newMap;
+      });
     }
   };
 

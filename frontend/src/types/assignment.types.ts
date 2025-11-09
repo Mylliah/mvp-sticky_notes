@@ -2,6 +2,7 @@ export interface Assignment {
   id: number;
   note_id: number;
   user_id: number; // ID du destinataire
+  username?: string; // Nom du destinataire
   assigned_date: string;
   is_read: boolean;
   read_date: string | null;
