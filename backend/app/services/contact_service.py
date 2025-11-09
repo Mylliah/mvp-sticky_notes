@@ -82,6 +82,7 @@ class ContactService:
             "id": user.id,
             "username": user.username,
             "email": user.email,
+            "nickname": "Moi",
             "is_self": True,
             "is_mutual": True
         }]
@@ -94,6 +95,7 @@ class ContactService:
                     "id": contact.contact_user_id,
                     "username": contact.contact_user.username if contact.contact_user else None,
                     "email": contact.contact_user.email if contact.contact_user else None,
+                    "nickname": contact.nickname,
                     "is_self": False,
                     "is_mutual": True
                 })

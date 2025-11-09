@@ -301,19 +301,26 @@ class TestContactsRoutes:
 
     @pytest.mark.integration
     def test_list_assignable_users_with_contacts(self, client, app):
-        """Liste assignable = soi-même + contacts."""
-        token, _ = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
+        """Liste assignable = soi-même + contacts mutuels."""
+        token, user1_id = create_user_and_login(client, app, 'user1', 'user1@test.com', 'pass')
         
         with app.app_context():
-            # Créer et ajouter un contact
+            # Créer user2
             user2 = User(username='user2', email='user2@test.com', password_hash='hash')
             db.session.add(user2)
             db.session.commit()
+            user2_id = user2.id
             
+            # User1 ajoute user2
             client.post('/v1/contacts',
                 headers={'Authorization': f'Bearer {token}'},
                 json={'contact_username': 'user2', 'nickname': 'Contact'}
             )
+            
+            # User2 ajoute user1 pour rendre le contact mutuel
+            contact_user1_to_user2 = Contact(user_id=user2_id, contact_user_id=user1_id, nickname='User1')
+            db.session.add(contact_user1_to_user2)
+            db.session.commit()
             
             # Récupérer la liste assignable
             response = client.get('/v1/contacts/assignable', headers={
@@ -323,7 +330,9 @@ class TestContactsRoutes:
             data = response.get_json()
             assert len(data) == 2
             assert data[0]['is_self'] is True
+            assert data[0]['is_mutual'] is True
             assert data[1]['is_self'] is False
+            assert data[1]['is_mutual'] is True
             assert data[1]['username'] == 'user2'
 
     @pytest.mark.integration

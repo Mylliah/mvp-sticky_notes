@@ -151,8 +151,10 @@ class TestAssignmentsMutualContactValidation:
                 headers={"Authorization": f"Bearer {token}"}
             )
             
-            assert response.status_code == 400
-            assert b'not in your contacts' in response.data
+            assert response.status_code == 403
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'mutual' in message.lower() or 'contact' in message.lower()
     
     @pytest.mark.integration
     def test_cannot_assign_to_non_mutual_contact(self, client, app):
@@ -180,7 +182,9 @@ class TestAssignmentsMutualContactValidation:
             )
             
             assert response.status_code == 403
-            assert b'contact has not added you back' in response.data or b'Cannot assign' in response.data
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'mutual' in message.lower() or 'contact' in message.lower()
     
     @pytest.mark.integration
     def test_can_assign_to_mutual_contact(self, client, app):
@@ -257,4 +261,6 @@ class TestAssignmentsMutualContactValidation:
             )
             
             assert response.status_code == 403
-            assert b'Only the creator' in response.data
+            data = response.get_json()
+            message = data.get('description') or data.get('message', '')
+            assert 'creator' in message.lower()

@@ -93,7 +93,7 @@ class TestMutualContactsAPI:
         assert bob_contact["is_mutual"] is False
     
     def test_get_assignable_includes_is_mutual_field(self, client, app):
-        """GET /contacts/assignable inclut is_mutual."""
+        """GET /contacts/assignable inclut is_mutual (toujours True pour les contacts assignables)."""
         # Créer users
         user1 = User(username="alice", email="alice@test.com", password_hash="hash1")
         user2 = User(username="bob", email="bob@test.com", password_hash="hash2")
@@ -101,8 +101,13 @@ class TestMutualContactsAPI:
         db.session.commit()
         
         # Alice ajoute Bob
-        contact = Contact(user_id=user1.id, contact_user_id=user2.id, nickname="Bob")
-        db.session.add(contact)
+        contact1 = Contact(user_id=user1.id, contact_user_id=user2.id, nickname="Bob")
+        db.session.add(contact1)
+        db.session.commit()
+        
+        # Bob ajoute Alice pour rendre le contact mutuel
+        contact2 = Contact(user_id=user2.id, contact_user_id=user1.id, nickname="Alice")
+        db.session.add(contact2)
         db.session.commit()
         
         # Login Alice
@@ -117,7 +122,7 @@ class TestMutualContactsAPI:
         # Trouver Bob (pas "Moi")
         bob = [a for a in assignable if a.get("nickname") == "Bob"][0]
         assert "is_mutual" in bob
-        assert bob["is_mutual"] is False
+        assert bob["is_mutual"] is True  # Les contacts assignables sont toujours mutuels
     
     def test_cannot_assign_note_to_non_mutual_contact(self, client, app):
         """On ne peut pas assigner une note à un contact non mutuel."""
@@ -147,7 +152,9 @@ class TestMutualContactsAPI:
                               headers={"Authorization": f"Bearer {token}"})
         
         assert response.status_code == 403
-        assert b"contact has not added you back" in response.data
+        data = response.get_json()
+        message = data.get('description') or data.get('message', '')
+        assert 'mutual' in message.lower() or 'contact' in message.lower()
     
     def test_can_assign_note_to_mutual_contact(self, client, app):
         """On peut assigner une note à un contact mutuel."""

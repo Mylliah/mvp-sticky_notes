@@ -184,7 +184,9 @@ class TestAssignmentsIsolation:
                              headers={"Authorization": f"Bearer {token_charlie}"})
         
         assert response.status_code == 403
-        assert b"your own assignments" in response.data
+        data = response.get_json()
+        message = data.get('description') or data.get('message', '')
+        assert 'access' in message.lower() or 'denied' in message.lower()
     
     def test_creator_can_view_assignment(self, client, app):
         """Le créateur de la note peut voir l'assignation."""

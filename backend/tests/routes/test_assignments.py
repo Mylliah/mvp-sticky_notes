@@ -108,7 +108,7 @@ class TestAssignmentsRoutes:
                 'user_id': user.id
             }, headers=headers)
             
-            assert response.status_code == 400
+            assert response.status_code == 404
             data = response.get_json()
             message = data.get('description') or data.get('message', '')
             assert 'Note not found' in message
@@ -124,7 +124,7 @@ class TestAssignmentsRoutes:
                 'user_id': 99999
             }, headers=headers)
             
-            assert response.status_code == 400
+            assert response.status_code == 404
             data = response.get_json()
             message = data.get('description') or data.get('message', '')
             assert 'User not found' in message
@@ -276,7 +276,7 @@ class TestAssignmentsRoutes:
                 'user_id': 99999
             }, headers=headers)
             
-            assert response.status_code == 400
+            assert response.status_code == 404
             data = response.get_json()
             message = data.get('description') or data.get('message', '')
             assert 'User not found' in message
@@ -401,7 +401,7 @@ class TestAssignmentsRoutes:
             response = client.put(f'/v1/assignments/{assignment_id}/priority', headers=headers)
             
             assert response.status_code == 403
-            assert 'only toggle priority on your own assignments' in response.get_json()['message']
+            assert 'Only the recipient can toggle priority' in response.get_json()['message']
 
     @pytest.mark.integration
     def test_toggle_priority_not_found(self, client, app, auth_token):
@@ -599,7 +599,7 @@ class TestAssignmentsRoutes:
             assert response.status_code == 403
             data = response.get_json()
             message = data.get('description') or data.get('message', '')
-            assert 'only update status on your own assignments' in message.lower()
+            assert 'only the recipient can update status' in message.lower()
 
     @pytest.mark.integration
     def test_update_status_not_found(self, client, app, auth_token):

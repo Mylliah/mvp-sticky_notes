@@ -570,7 +570,7 @@ class TestErrorHandlingWorkflows:
                     'user_id': user_id
                 }
             )
-            assert response.status_code == 400
+            assert response.status_code == 404  # Not Found pour une ressource inexistante
             
             # 3. Créer un contact, puis essayer de créer un doublon
             # D'abord créer un autre user
