@@ -4,9 +4,9 @@ Routes pour la gestion des assignations.
 import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ... import db
 from ...models import Assignment, Note, ActionLog
 from ...services import AssignmentService
+from ...repositories import ActionLogRepository
 
 bp = Blueprint('assignments', __name__)
 
@@ -36,8 +36,8 @@ def create_assignment():
         target_id=assignment["id"],
         payload=json.dumps({"note_id": data["note_id"], "assigned_to": data["user_id"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return assignment, 201
 
@@ -105,8 +105,8 @@ def update_assignment(assignment_id):
         target_id=assignment["id"],
         payload=json.dumps({"note_id": assignment["note_id"], "user_id": assignment["user_id"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return assignment
 
@@ -137,8 +137,8 @@ def delete_assignment(assignment_id):
             "completed_date": finished_date
         })
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return {"deleted": True}
 
@@ -159,8 +159,8 @@ def toggle_priority(assignment_id):
         target_id=assignment["id"],
         payload=json.dumps({"priority": assignment["recipient_priority"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return assignment
 
@@ -200,8 +200,8 @@ def update_status(assignment_id):
                 "user_id": assignment["user_id"]
             })
         )
-        db.session.add(action_log)
-        db.session.commit()
+        action_log_repo = ActionLogRepository()
+        action_log_repo.save(action_log)
     
     return assignment
 

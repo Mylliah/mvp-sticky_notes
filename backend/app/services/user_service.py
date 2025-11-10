@@ -152,11 +152,10 @@ class UserService:
         
         user_dict = user.to_dict()
         
+        # ✅ Utiliser le repository pour la suppression
         # La suppression en cascade est gérée par SQLAlchemy
         # Notes, Assignments, Contacts, ActionLogs seront supprimés
-        from ..models import db
-        db.session.delete(user)
-        db.session.commit()
+        self.user_repo.delete(user)
         
         return user_dict
     

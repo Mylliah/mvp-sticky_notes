@@ -4,9 +4,9 @@ Routes pour la gestion des contacts.
 import json
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ... import db
 from ...models import Contact, User, ActionLog
 from ...services import ContactService
+from ...repositories import ActionLogRepository
 
 bp = Blueprint('contacts', __name__)
 
@@ -36,8 +36,8 @@ def create_contact():
         target_id=contact["id"],
         payload=json.dumps({"contact_username": data["contact_username"], "nickname": data["nickname"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return contact, 201
 
@@ -107,8 +107,8 @@ def update_contact(contact_id):
         target_id=contact["id"],
         payload=json.dumps({"nickname": contact["nickname"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return contact
 
@@ -133,8 +133,8 @@ def delete_contact(contact_id):
         target_id=contact_id,
         payload=json.dumps({"contact_username": contact_username})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return {"deleted": True}
 

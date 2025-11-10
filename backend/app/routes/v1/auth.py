@@ -6,9 +6,10 @@ from flask import Blueprint, request, abort
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
-from ... import db, limiter
+from ... import limiter
 from ...models import User, ActionLog
 from ...services.auth_service import AuthService
+from ...repositories import ActionLogRepository
 
 bp = Blueprint('auth', __name__)
 
@@ -40,8 +41,8 @@ def register():
         target_id=user_dict["id"],
         payload=json.dumps({"username": user_dict["username"], "email": user_dict["email"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
 
     return {
         "msg": "User created successfully",
@@ -114,8 +115,8 @@ def logout():
         target_id=current_user_id,
         payload=json.dumps({"timestamp": "logout"})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return {
         "msg": "Successfully logged out"
