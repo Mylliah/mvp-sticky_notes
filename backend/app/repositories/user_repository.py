@@ -81,3 +81,14 @@ class UserRepository:
         db.session.commit()
         db.session.refresh(user)
         return user
+    
+    def delete(self, user: User) -> None:
+        """
+        Supprimer un utilisateur.
+        La suppression en cascade est gérée par SQLAlchemy.
+        
+        Args:
+            user: Instance de User à supprimer
+        """
+        db.session.delete(user)
+        db.session.commit()

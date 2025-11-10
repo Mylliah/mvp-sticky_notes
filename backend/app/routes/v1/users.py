@@ -5,9 +5,9 @@ import json
 from flask import Blueprint, request, abort, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
-from ... import db
 from ...models import User, ActionLog
 from ...services import UserService
+from ...repositories import ActionLogRepository
 
 bp = Blueprint('users', __name__)
 
@@ -91,8 +91,8 @@ def update_user(user_id):
             target_id=user_id,
             payload=json.dumps({"timestamp": "password_updated"})
         )
-        db.session.add(action_log)
-        db.session.commit()
+        action_log_repo = ActionLogRepository()
+        action_log_repo.save(action_log)
     
     # Ancien format "password" (pour compatibilité)
     elif "password" in data:
@@ -133,8 +133,8 @@ def delete_user(user_id):
         target_id=user_id,
         payload=json.dumps({"username": username})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     # Utiliser le service
     service = UserService()

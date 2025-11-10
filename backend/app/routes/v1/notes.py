@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
-from ... import db
 from ...models import Note, Assignment, ActionLog
 from ...services.note_service import NoteService
+from ...repositories import ActionLogRepository
 
 bp = Blueprint('notes', __name__)
 
@@ -41,8 +41,8 @@ def create_note():
         target_id=note_dict["id"],
         payload=json.dumps({"important": note_dict["important"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return note_dict, 201
 
@@ -261,8 +261,8 @@ def update_note(note_id):
         target_id=note_dict["id"],
         payload=json.dumps({"important": note_dict["important"]})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return note_dict
 
@@ -308,8 +308,8 @@ def delete_note(note_id):
         target_id=note_dict["id"],
         payload=json.dumps({"is_creator": is_creator})
     )
-    db.session.add(action_log)
-    db.session.commit()
+    action_log_repo = ActionLogRepository()
+    action_log_repo.save(action_log)
     
     return note_dict
 
