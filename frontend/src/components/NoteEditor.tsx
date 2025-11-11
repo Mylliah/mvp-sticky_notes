@@ -794,7 +794,7 @@ export default function NoteEditor({ note, onNoteCreated, onNoteDeleted, onClose
                     // Message différent si le destinataire supprime sa propre assignation ou si le créateur la supprime
                     const isSelfDeletion = deletion.deleted_by === deletion.user_id;
                     const message = isSelfDeletion 
-                      ? `${deletedByName} a supprimé son assignation`
+                      ? `${deletedByName} a supprimé sa note`
                       : `${deletedByName} a supprimé l'assignation de ${recipientName}`;
                     
                     return (
