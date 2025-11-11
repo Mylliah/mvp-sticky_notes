@@ -251,6 +251,13 @@ body.dark-mode .note-body {
   box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4);
 }
 
+/* Badge "terminé mais supprimé" - gris (pour le créateur quand l'assignation a été terminée puis supprimée) */
+.completed-badge.deleted {
+  background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+  box-shadow: 0 2px 4px rgba(158, 158, 158, 0.4);
+  opacity: 0.8;
+}
+
 /* Badge "Nouveau" - en haut à droite (si pas de completed) */
 .new-badge {
   position: absolute;

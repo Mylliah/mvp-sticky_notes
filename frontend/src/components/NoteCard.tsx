@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Note } from '../types/note.types';
 import { Assignment } from '../types/assignment.types';
 import { authService } from '../services/auth.service';
@@ -53,16 +53,78 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAssignMenu]);
   
-  // État pour distinguer le statut de complétion (partiel vs total)
-  const [completionStatus, setCompletionStatus] = useState<'none' | 'partial' | 'full'>('none');
+  // État pour distinguer le statut de complétion (partiel vs total vs deleted)
+  const [completionStatus, setCompletionStatus] = useState<'none' | 'partial' | 'full' | 'deleted'>('none');
+  const [hasDeletedCompletions, setHasDeletedCompletions] = useState(false);
+
+  // Vérifier s'il y a des assignations terminées puis supprimées
+  const checkDeletedCompletions = useCallback(async () => {
+    if (!isMyNote || !currentUser) return;
+    
+    console.log(`[NoteCard ${note.id}] 🔍 Checking deleted completions...`);
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/v1/notes/${note.id}/completion-history`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authService.getToken()}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        console.log(`[NoteCard ${note.id}] ⚠️ Response not OK:`, response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      const deletedCompletions = data.completions?.filter((c: any) => c.was_deleted) || [];
+      
+      console.log(`[NoteCard ${note.id}] 🗑️ Deleted completions:`, deletedCompletions);
+      
+      if (deletedCompletions.length > 0) {
+        console.log(`[NoteCard ${note.id}] ✅ Setting hasDeletedCompletions to TRUE`);
+        setHasDeletedCompletions(true);
+      } else {
+        console.log(`[NoteCard ${note.id}] ❌ No deleted completions found`);
+        setHasDeletedCompletions(false);
+      }
+    } catch (err) {
+      console.error(`[NoteCard ${note.id}] ❌ Error checking deleted completions:`, err);
+    }
+  }, [note.id, isMyNote, currentUser]);
 
   // Calculer le statut à partir des assignations pré-chargées
   useEffect(() => {
-    if (!currentUser || !assignments || assignments.length === 0) {
+    console.log(`[NoteCard ${note.id}] 🔄 useEffect triggered - assignments:`, assignments?.length, 'hasDeletedCompletions:', hasDeletedCompletions);
+    
+    if (!currentUser) {
       setIsCompleted(false);
       setIsPriority(false);
       setIsNew(false);
       setCompletionStatus('none');
+      return;
+    }
+    
+    // Cas 1: Il n'y a AUCUNE assignation active
+    if (!assignments || assignments.length === 0) {
+      console.log(`[NoteCard ${note.id}] 📭 No active assignments`);
+      
+      // Vérifier s'il y a des completions supprimées
+      if (hasDeletedCompletions) {
+        console.log(`[NoteCard ${note.id}] 🎯 Showing DELETED status (gray check)`);
+        setIsCompleted(true);
+        setCompletionStatus('deleted');
+        setIsPriority(false);
+        setIsNew(false);
+      } else {
+        console.log(`[NoteCard ${note.id}] ❌ No deleted completions either`);
+        setIsCompleted(false);
+        setIsPriority(false);
+        setIsNew(false);
+        setCompletionStatus('none');
+      }
       return;
     }
 
@@ -80,8 +142,15 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       console.log(`[NoteCard ${note.id}] 👤 CRÉATEUR: ${completedAssignments}/${totalAssignments} terminés`);
       
       if (completedAssignments === 0) {
-        setIsCompleted(false);
-        setCompletionStatus('none');
+        // Aucune assignation active terminée
+        // Mais vérifier s'il y a des assignations supprimées qui étaient terminées
+        if (hasDeletedCompletions) {
+          setIsCompleted(true);
+          setCompletionStatus('deleted'); // Check grise
+        } else {
+          setIsCompleted(false);
+          setCompletionStatus('none');
+        }
       } else if (completedAssignments === totalAssignments) {
         setIsCompleted(true);
         setCompletionStatus('full'); // Tous terminés = vert foncé
@@ -118,7 +187,15 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       setCompletionStatus('none');
       setMyAssignmentDate(null);
     }
-  }, [note, currentUser, assignments, isMyNote]);
+  }, [note, currentUser, assignments, isMyNote, hasDeletedCompletions]);
+
+  // Charger l'historique des completions supprimées au montage (pour le créateur uniquement)
+  useEffect(() => {
+    if (isMyNote && currentUser) {
+      console.log(`[NoteCard ${note.id}] 🔄 Triggering checkDeletedCompletions...`);
+      checkDeletedCompletions();
+    }
+  }, [note.id, isMyNote, currentUser, checkDeletedCompletions]); // Inclure checkDeletedCompletions dans les dépendances
 
   // Charger le nom du créateur et des destinataires
   useEffect(() => {
@@ -399,9 +476,15 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
       {/* Badge "terminé" avec couleur selon le statut */}
       {isCompleted && (
         <div 
-          className={`completed-badge ${completionStatus === 'partial' ? 'partial' : 'full'}`}
+          className={`completed-badge ${
+            completionStatus === 'deleted' ? 'deleted' : 
+            completionStatus === 'partial' ? 'partial' : 
+            'full'
+          }`}
           title={
-            completionStatus === 'partial' 
+            completionStatus === 'deleted'
+              ? 'Note précédemment assignée et terminée (assignation supprimée)'
+              : completionStatus === 'partial' 
               ? 'Terminé partiellement (certains contacts ont terminé)' 
               : 'Terminé'
           }

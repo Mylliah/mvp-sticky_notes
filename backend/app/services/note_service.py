@@ -519,6 +519,12 @@ class NoteService:
         completions = []
         for assignment_id, log in completions_by_assignment.items():
             if log.action_type == "assignment_completed":
+                # Vérifier si l'assignation existe encore (pas supprimée)
+                assignment = self.assignment_repo.find_by_id(assignment_id)
+                if not assignment:
+                    # Assignation supprimée, on la skip ici (sera ajoutée plus bas avec was_deleted=True)
+                    continue
+                    
                 payload = json.loads(log.payload)
                 assigned_user_id = payload.get("user_id")
                 user = self.user_repo.find_by_id(assigned_user_id)
@@ -543,12 +549,13 @@ class NoteService:
                 if payload.get("note_id") == note_id and payload.get("was_completed"):
                     # Cette assignation était terminée quand elle a été supprimée
                     assigned_user_id = payload.get("assigned_user_id")
+                    assignment_id = log.target_id
                     user = self.user_repo.find_by_id(assigned_user_id)
                     
-                    # Vérifier si on ne l'a pas déjà ajoutée (assignation toujours active)
-                    if not any(c["user_id"] == assigned_user_id for c in completions):
+                    # Vérifier si cette assignation spécifique n'est pas déjà dans la liste (par ID d'assignation)
+                    if not any(c.get("assignment_id") == assignment_id for c in completions):
                         completions.append({
-                            "assignment_id": None,  # L'assignation n'existe plus
+                            "assignment_id": assignment_id,  # Garder l'ID pour référence
                             "user_id": assigned_user_id,
                             "username": user.username if user else f"User #{assigned_user_id}",
                             "completed_date": payload.get("completed_date"),  # Date de completion depuis le log
