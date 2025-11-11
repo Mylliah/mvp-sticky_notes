@@ -71,48 +71,52 @@ export default function NoteCard({ note, onEdit, onDelete, onDragStart, onDragEn
     // Trouver MON assignation
     const myAssignment = assignments.find((a: Assignment) => a.user_id === currentUser.id);
     
-    if (myAssignment) {
-      const priority = myAssignment.recipient_priority === true;
-      const isUnread = !myAssignment.is_read;
+    // LOGIQUE DE LA COCHE VERTE - CRÉATEUR vs DESTINATAIRE
+    if (isMyNote) {
+      // Je suis le CRÉATEUR : vérifier le statut de TOUS les assignés (même si je ne suis pas assigné moi-même)
+      const totalAssignments = assignments.length;
+      const completedAssignments = assignments.filter(a => a.recipient_status === 'terminé').length;
       
-      // LOGIQUE DE LA COCHE VERTE
-      if (isMyNote) {
-        // Je suis le CRÉATEUR : vérifier le statut de TOUS les assignés
-        const totalAssignments = assignments.length;
-        const completedAssignments = assignments.filter(a => a.recipient_status === 'terminé').length;
-        
-        console.log(`[NoteCard ${note.id}] 👤 CRÉATEUR: ${completedAssignments}/${totalAssignments} terminés`);
-        
-        if (completedAssignments === 0) {
-          setIsCompleted(false);
-          setCompletionStatus('none');
-        } else if (completedAssignments === totalAssignments) {
-          setIsCompleted(true);
-          setCompletionStatus('full'); // Tous terminés = vert foncé
-        } else {
-          setIsCompleted(true);
-          setCompletionStatus('partial'); // Quelques-uns terminés = vert clair
-        }
+      console.log(`[NoteCard ${note.id}] 👤 CRÉATEUR: ${completedAssignments}/${totalAssignments} terminés`);
+      
+      if (completedAssignments === 0) {
+        setIsCompleted(false);
+        setCompletionStatus('none');
+      } else if (completedAssignments === totalAssignments) {
+        setIsCompleted(true);
+        setCompletionStatus('full'); // Tous terminés = vert foncé
       } else {
-        // Je suis un DESTINATAIRE : afficher seulement MON statut
-        const myCompleted = myAssignment.recipient_status === 'terminé';
-        console.log(`[NoteCard ${note.id}] 📨 DESTINATAIRE: Mon statut =`, myCompleted ? 'terminé' : 'en cours');
-        
-        setIsCompleted(myCompleted);
-        setCompletionStatus(myCompleted ? 'full' : 'none'); // Ma coche = vert foncé
-        
-        // Stocker la date d'assignation pour l'affichage
-        setMyAssignmentDate(myAssignment.assigned_date);
+        setIsCompleted(true);
+        setCompletionStatus('partial'); // Quelques-uns terminés = orange
       }
       
-      setIsPriority(priority);
-      setIsNew(isUnread);
+      // Priorité et "nouveau" uniquement si JE suis assigné
+      if (myAssignment) {
+        setIsPriority(myAssignment.recipient_priority === true);
+        setIsNew(!myAssignment.is_read);
+        setMyAssignmentDate(myAssignment.assigned_date);
+      } else {
+        setIsPriority(false);
+        setIsNew(false);
+        setMyAssignmentDate(null);
+      }
+    } else if (myAssignment) {
+      // Je suis un DESTINATAIRE : afficher seulement MON statut
+      const myCompleted = myAssignment.recipient_status === 'terminé';
+      console.log(`[NoteCard ${note.id}] 📨 DESTINATAIRE: Mon statut =`, myCompleted ? 'terminé' : 'en cours');
+      
+      setIsCompleted(myCompleted);
+      setCompletionStatus(myCompleted ? 'full' : 'none'); // Ma coche = vert foncé
+      setIsPriority(myAssignment.recipient_priority === true);
+      setIsNew(!myAssignment.is_read);
+      setMyAssignmentDate(myAssignment.assigned_date);
     } else {
+      // Je ne suis ni créateur ni destinataire (ne devrait pas arriver)
       setIsCompleted(false);
       setIsPriority(false);
       setIsNew(false);
       setCompletionStatus('none');
-      setMyAssignmentDate(null); // Pas d'assignation = pas de date d'assignation
+      setMyAssignmentDate(null);
     }
   }, [note, currentUser, assignments, isMyNote]);
 
